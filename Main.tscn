@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=2]
 
-[ext_resource path="res://ExampleContent.tscn" type="PackedScene" id=1]
-[ext_resource path="res://SmoothScroll.tscn" type="PackedScene" id=2]
+[ext_resource path="res://addons/SmoothScroll/SmoothScroll.gd" type="Script" id=1]
+[ext_resource path="res://ExampleContent.tscn" type="PackedScene" id=2]
 
 [node name="Main" type="Control"]
 anchor_right = 1.0
@@ -10,12 +10,15 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="SmoothScroll" parent="." instance=ExtResource( 2 )]
-margin_left = 160.0
-margin_top = 92.0
-margin_right = -530.0
-margin_bottom = -266.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
+[node name="SmoothScroll" type="Control" parent="."]
+margin_left = 258.058
+margin_top = 57.082
+margin_right = 516.058
+margin_bottom = 284.082
+rect_clip_content = true
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
 
-[node name="ExampleContent" parent="SmoothScroll" instance=ExtResource( 1 )]
+[node name="ExampleContent" parent="SmoothScroll" instance=ExtResource( 2 )]

@@ -1,12 +1,8 @@
-[gd_scene load_steps=2 format=2]
-
-[sub_resource type="GDScript" id=1]
-script/source = "
 extends Control
 
 var v = Vector2(0,0) #current velocity
 var just_stop_under = 0.01
-var multi = -2 #speed of one input
+export(float, -10, -1) var multi = -2 #speed of one input
 var is_grabbed = false
 
 var over_drag_multiplicator_top = 1
@@ -55,13 +51,3 @@ func _gui_input(event):
 			BUTTON_WHEEL_RIGHT: v.x += multi
 			BUTTON_WHEEL_LEFT:  v.x -= multi
 
-"
-
-[node name="SmoothScroll" type="Control"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-rect_clip_content = true
-script = SubResource( 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
