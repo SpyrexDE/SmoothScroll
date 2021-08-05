@@ -22,3 +22,5 @@ __meta__ = {
 }
 
 [node name="ExampleContent" parent="SmoothScroll" instance=ExtResource( 2 )]
+margin_right = 3.05176e-05
+margin_bottom = 1184.0
