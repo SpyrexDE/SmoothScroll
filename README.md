@@ -1,4 +1,4 @@
-# SmoothScroll
+# <img src="./addons/SmoothScroll/class-icon.svg" alt="drawing" width="20" style="padding-top: 20px;"/>   SmoothScroll
  A SmoothScroll node for Godot
 
 [Watch video footage on Youtube](https://www.youtube.com/watch?v=6r474hLOfPU)
