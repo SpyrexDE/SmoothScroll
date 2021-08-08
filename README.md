@@ -11,6 +11,14 @@ Do NOT add the scene by the "Create Node" tab. This won't work.
 
 **Currently only supports one Control node as content-child!**
 
-
+<br>
+<br>
+<br>
+<h3 align="center">
+⚠️ THIS PROJECT IS NOT READY FOR PRODUCTION AND LOOKING FOR CONTRIBUTIONS ⚠️
+</h3>
+<br>
+<br>
+<br>
 
 `Mouse scroll icon by Greg Fiske from the Noun Project`
