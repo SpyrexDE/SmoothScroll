@@ -102,7 +102,7 @@ func _gui_input(event):
 			BUTTON_WHEEL_RIGHT: v.x -= multi
 			BUTTON_WHEEL_LEFT:  v.x += multi
 	
-	if event is InputEventMouseMotion && is_grabbed:
+	if event is InputEventScreenDrag && is_grabbed:
 		v.y = Input.get_last_mouse_speed().y / 50
 
 func _ready():
