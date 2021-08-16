@@ -21,7 +21,17 @@ var content_node : Control
 
 func _process(delta):
 	var d = delta
-	var bottom_pos = content_node.rect_position.y + content_node.rect_size.y - self.rect_size.y
+	var content_size = content_node.rect_size.y
+	# If no scroll needed
+	if content_size <= self.rect_size.y:
+		$ScrollThumb.hide()
+		$ScrollTrack.hide()
+		content_node.rect_size.y = self.rect_size.y
+	else:
+		$ScrollThumb.show()
+		$ScrollTrack.show()
+		
+	var bottom_pos = content_node.rect_position.y + content_size - self.rect_size.y
 	var top_pos = content_node.rect_position.y
 	
 	# If overdragged:
@@ -55,20 +65,20 @@ func _process(delta):
 		content_node.rect_position += v
 		# Calculate scrollbar
 		if   top_pos > 0:
-			$ScrollThumb.rect_scale.y = 1/(top_pos/30 + 1)
+			$ScrollThumb.rect_scale.y = 1/(top_pos/1000 + 1)
 			$ScrollThumb.rect_pivot_offset.y = 0
 			shift_thumb(false)
 		elif bottom_pos < 0:
-			$ScrollThumb.rect_scale.y = -1/(-bottom_pos/30 + 1)
+			$ScrollThumb.rect_scale.y = -1/(-bottom_pos/1000 + 1)
 			shift_thumb(true)
 		else:
 			shift_thumb(false)
 			$ScrollThumb.rect_pivot_offset.y = 0
 			$ScrollThumb.rect_scale.y = 1
-			$ScrollThumb.rect_position.y = - (content_node.rect_position.y / (content_node.rect_size.y - self.rect_size.y)) * 200
+			$ScrollThumb.rect_position.y = - (content_node.rect_position.y / (content_size - self.rect_size.y)) * 550
 	else:
 		$ScrollThumb.rect_global_position.y = get_global_mouse_position().y - cursor_offset
-		content_node.rect_position.y = lerp(content_node.rect_position.y, - ($ScrollThumb.rect_position.y / (content_node.rect_size.y - self.rect_size.y)) * 1900, scrollbar_damping)
+		content_node.rect_position.y = lerp(content_node.rect_position.y, - ($ScrollThumb.rect_position.y / (content_size - self.rect_size.y)) * 1900, scrollbar_damping)
 
 var did_shift = false
 
@@ -80,10 +90,10 @@ func shift_thumb(do_shift):
 		did_shift = false
 
 func _gui_input(event):
-
+	
 	if event is InputEventMouseButton:
 		match event.button_index:
-			BUTTON_MIDDLE:  is_grabbed = event.pressed
+			BUTTON_LEFT:  is_grabbed = event.pressed
 
 	if event is InputEventMouseButton:
 		match event.button_index:
@@ -91,6 +101,9 @@ func _gui_input(event):
 			BUTTON_WHEEL_UP:    v.y += multi
 			BUTTON_WHEEL_RIGHT: v.x -= multi
 			BUTTON_WHEEL_LEFT:  v.x += multi
+	
+	if event is InputEventMouseMotion && is_grabbed:
+		v.y = Input.get_last_mouse_speed().y / 50
 
 func _ready():
 	for c in get_children():

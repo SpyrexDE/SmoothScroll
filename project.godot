@@ -10,7 +10,6 @@ config_version=4
 
 _global_script_classes=[  ]
 _global_script_class_icons={
-
 }
 
 [application]
@@ -21,3 +20,7 @@ run/main_scene="res://Main.tscn"
 [editor_plugins]
 
 enabled=PoolStringArray( "SmoothScroll" )
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
