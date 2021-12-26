@@ -19,7 +19,7 @@ var cursor_offset = 0
 var content_node : Control
 
 
-func _process(delta):
+func _physics_process(delta):
 	var d = delta
 	var content_size = content_node.rect_size.y
 	# If no scroll needed
