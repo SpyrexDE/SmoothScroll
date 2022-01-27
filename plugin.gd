@@ -3,7 +3,7 @@ extends EditorPlugin
 
 
 func _enter_tree():
-	add_custom_type("SmoothScroll", "Control", preload("SmoothScroll.gd"), preload("class-icon.svg"))
+	add_custom_type("SmoothScroll", "ScrollContainer", preload("SmoothScroll.gd"), preload("class-icon.svg"))
 
 
 func _exit_tree():
