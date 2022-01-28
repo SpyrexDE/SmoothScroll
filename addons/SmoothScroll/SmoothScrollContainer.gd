@@ -2,7 +2,6 @@
 ##
 ## Applies velocity based momentum and "overdrag"
 ## functionality to a ScrollContainer
-class_name SmoothScrollContainer, "class-icon.svg"
 extends ScrollContainer
 
 # Drag impact for one scroll input
