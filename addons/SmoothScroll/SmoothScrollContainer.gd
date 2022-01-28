@@ -32,7 +32,7 @@ func _ready() -> void:
 		content_node = c
 
 
-func _physics_process(delta: float) -> void:
+func _process(delta: float) -> void:
 	var d := delta
 	# Distance between content_node's bottom and bottom of the scroll box 
 	var bottom_distance:= content_node.rect_position.y + content_node.rect_size.y - self.rect_size.y
