@@ -8,7 +8,7 @@ extends ScrollContainer
 # Drag impact for one scroll input
 export(float, 10, 1) var speed = 2
 # Softness of damping when "overdragging"
-export(float, 0.01, 1) var damping = 0.1
+export(float, 0, 1) var damping = 0.1
 
 # Current velocity of the `content_node`
 var velocity := Vector2(0,0)
@@ -32,7 +32,7 @@ func _ready() -> void:
 		content_node = c
 
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	var d := delta
 	# Distance between content_node's bottom and bottom of the scroll box 
 	var bottom_distance:= content_node.rect_position.y + content_node.rect_size.y - self.rect_size.y
