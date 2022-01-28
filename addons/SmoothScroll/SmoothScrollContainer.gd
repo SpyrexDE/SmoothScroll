@@ -32,6 +32,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# If no scroll needed, don't apply forces
+	if content_node.rect_size.y - self.rect_size.y < 1:
+		return
+	
 	var d := delta
 	# Distance between content_node's bottom and bottom of the scroll box 
 	var bottom_distance:= content_node.rect_position.y + content_node.rect_size.y - self.rect_size.y
@@ -77,7 +81,7 @@ func _process(delta: float) -> void:
 	set_v_scroll(-pos.y)
 
 
-func _gui_input(event):
+func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if not event.pressed:
 			scrolling = false
@@ -87,5 +91,41 @@ func _gui_input(event):
 			BUTTON_WHEEL_UP:    velocity.y += speed
 
 
-func _on_VScrollBar_scrolling():
+func _on_VScrollBar_scrolling() -> void:
 	scrolling = true
+
+
+# Scrolls up a page
+func scroll_page_up() -> void:
+	velocity.y += self.rect_size.y / 10
+
+
+# Scrolls down a page
+func scroll_page_down() -> void:
+	velocity.y -= self.rect_size.y / 10
+
+
+# Adds velocity to the vertical scroll
+func scroll_vertical(amount: float) -> void:
+	velocity.y -= amount
+
+# Scrolls to top
+func scroll_to_top() -> void:
+	# Reset velocity
+	velocity.y = 0
+	# Move content node to top
+	pos.y = 0
+	content_node.rect_position = pos
+	# Update vertical scroll bar
+	set_v_scroll(-pos.y)
+
+
+# Scrolls to bottom
+func scroll_to_bottom() -> void:
+	# Reset velocity
+	velocity.y = 0
+	# Move content node to bottom
+	pos.y = -content_node.rect_size.y + self.rect_size.y
+	content_node.rect_position = pos
+	# Update vertical scroll bar
+	set_v_scroll(-pos.y)
