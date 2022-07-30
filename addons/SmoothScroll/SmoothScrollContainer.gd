@@ -98,10 +98,10 @@ func _gui_input(event: InputEvent) -> void:
 			BUTTON_WHEEL_UP:    velocity.y += speed
 			_:                  scrolled = false
 			
-		if scrolled: friction = frictionScroll
+		if scrolled: friction = friction_scroll
 			
 	elif event is InputEventScreenDrag:
-		friction = frictionDrag
+		friction = friction_drag
 		if scroll_horizontal_enabled: velocity.x = event.relative.x
 		if scroll_vertical_enabled:   velocity.y = event.relative.y
 
