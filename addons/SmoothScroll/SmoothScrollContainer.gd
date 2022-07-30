@@ -9,8 +9,8 @@ export(float, 10, 1) var speed = 2
 # Softness of damping when "overdragging"
 export(float, 0, 1) var damping = 0.1
 
-export(float, 0, 1) var frictionScroll = 0.9
-export(float, 0, 1) var frictionDrag = 0.97
+export(float, 0, 1) var friction_scroll = 0.9
+export(float, 0, 1) var friction_drag = 0.97
 
 # Current velocity of the `content_node`
 var velocity := Vector2(0,0)
