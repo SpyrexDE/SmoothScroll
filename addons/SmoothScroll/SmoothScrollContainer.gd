@@ -33,7 +33,7 @@ var friction := 0.9
 func _ready() -> void:
 	get_v_scrollbar().connect("scrolling", self, "_on_VScrollBar_scrolling")
 	for c in get_children():
-		content_node = c
+		if not c is ScrollBar: content_node = c
 
 
 func _process(delta: float) -> void:
