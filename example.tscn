@@ -1,10 +1,19 @@
-[gd_scene load_steps=2 format=3 uid="uid://xqy4fhlaf2q3"]
+[gd_scene load_steps=3 format=3 uid="uid://xqy4fhlaf2q3"]
 
 [ext_resource type="Script" path="res://addons/SmoothScroll/SmoothScrollContainer.gd" id="1_su8ig"]
+
+[sub_resource type="GDScript" id="GDScript_xo176"]
+script/source = "extends Control
+
+
+func _ready():
+	$SmoothScrollContainer/Control/Button.grab_focus()
+"
 
 [node name="Example" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
+script = SubResource("GDScript_xo176")
 
 [node name="SmoothScrollContainer" type="ScrollContainer" parent="."]
 offset_left = 259.0
@@ -13,9 +22,16 @@ offset_right = 649.0
 offset_bottom = 393.0
 script = ExtResource("1_su8ig")
 
-[node name="RichTextLabel" type="RichTextLabel" parent="SmoothScrollContainer"]
-offset_right = 382.0
+[node name="Control" type="Control" parent="SmoothScrollContainer"]
+custom_minimum_size = Vector2(0, 943)
+offset_right = 390.0
 offset_bottom = 943.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RichTextLabel" type="RichTextLabel" parent="SmoothScrollContainer/Control"]
+offset_right = 390.0
+offset_bottom = 246.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime mollitia,
@@ -40,3 +56,21 @@ modi minima sunt esse temporibus sint culpa, recusandae aliquam numquam
 totam ratione voluptas quod exercitationem fuga. Possimus quis earum veniam 
 quasi aliquam eligendi, placeat qui corporis!"
 fit_content_height = true
+
+[node name="Button" type="Button" parent="SmoothScrollContainer/Control"]
+offset_left = 72.0
+offset_top = 166.0
+offset_right = 155.0
+offset_bottom = 212.0
+
+[node name="Button2" type="Button" parent="SmoothScrollContainer/Control"]
+offset_left = 182.0
+offset_top = 369.0
+offset_right = 265.0
+offset_bottom = 415.0
+
+[node name="Button3" type="Button" parent="SmoothScrollContainer/Control"]
+offset_left = 74.0
+offset_top = 487.0
+offset_right = 157.0
+offset_bottom = 533.0

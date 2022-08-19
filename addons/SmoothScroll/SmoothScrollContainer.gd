@@ -10,6 +10,9 @@ var speed = 2
 # Softness of damping when "overdragging"
 @export_range(0, 1)
 var damping = 0.1
+# Follows the focus smoothly
+@export
+var follow_focus_ := true
 
 # Current velocity of the `content_node`
 var velocity := Vector2(0,0)
@@ -29,6 +32,7 @@ var scrolling := false
 
 func _ready() -> void:
 	get_v_scroll_bar().connect("scrolling", _on_VScrollBar_scrolling)
+	get_viewport().connect("gui_focus_changed", _on_focus_changed)
 	for c in get_children():
 		content_node = c
 
@@ -92,10 +96,37 @@ func _gui_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_WHEEL_DOWN:  velocity.y -= speed
 			MOUSE_BUTTON_WHEEL_UP:    velocity.y += speed
 
+# Scroll to new focused element
+func _on_focus_changed(control: Control) -> void:
+	var is_child := false
+	for child in content_node.get_children():
+		if child == control:
+			is_child = true
+	if not is_child:
+		return
+	if not follow_focus_:
+		return
+	
+	var focus_size = control.size.y
+	var focus_top = control.position.y
+	
+	var scroll_size = size.y
+	var scroll_top = get_v_scroll()
+	var scroll_bottom = scroll_top + scroll_size - focus_size
+	
+	if focus_top < scroll_top:
+		scroll_to(focus_top)
+	
+	if focus_top > scroll_bottom:
+		var scroll_offset = scroll_top + focus_top - scroll_bottom
+		scroll_to(scroll_offset)
 
 func _on_VScrollBar_scrolling() -> void:
 	scrolling = true
 
+# Scrolls to specific position
+func scroll_to(y_pos: float) -> void:
+	velocity.y = -(y_pos + content_node.position.y) / 8
 
 # Scrolls up a page
 func scroll_page_up() -> void:
