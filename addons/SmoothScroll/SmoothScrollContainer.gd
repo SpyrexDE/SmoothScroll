@@ -14,9 +14,9 @@ var damping := 0.1
 @export
 var follow_focus_ := true
 
-@export(float, 0, 1)
+@export_range(0, 1)
 var friction_scroll := 0.9
-@export(float, 0, 1)
+@export_range(0, 1)
 var friction_drag := 0.97
 
 # Current velocity of the `content_node`
@@ -104,16 +104,14 @@ func _gui_input(event: InputEvent) -> void:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:  velocity.y -= speed
 			MOUSE_BUTTON_WHEEL_UP:    velocity.y += speed
-			BUTTON_WHEEL_DOWN:  velocity.y -= speed
-			BUTTON_WHEEL_UP:    velocity.y += speed
 			_:                  scrolled = false
 			
 		if scrolled: friction = friction_scroll
 			
 	elif event is InputEventScreenDrag:
 		friction = friction_drag
-		if scroll_horizontal_enabled: velocity.x = event.relative.x
-		if scroll_vertical_enabled:   velocity.y = event.relative.y
+		if scroll_horizontal: velocity.x = event.relative.x
+		if scroll_vertical:   velocity.y = event.relative.y
 
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
