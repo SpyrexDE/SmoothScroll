@@ -156,7 +156,7 @@ func scroll_page_down() -> void:
 
 
 # Adds velocity to the vertical scroll
-func scroll_vertical(amount: float) -> void:
+func scroll_vertically(amount: float) -> void:
 	velocity.y -= amount
 
 # Scrolls to top
