@@ -10,12 +10,13 @@ var speed := 2
 # Softness of damping when "overdragging"
 @export_range(0, 1)
 var damping := 0.1
-# Follows the focus smoothly
+# Scrolls to currently focused child element
 @export
 var follow_focus_ := true
-
+# Friction when using mouse wheel
 @export_range(0, 1)
 var friction_scroll := 0.9
+# Friction when using touch
 @export_range(0, 1)
 var friction_drag := 0.97
 
@@ -38,11 +39,12 @@ var friction := 0.9
 
 
 func _ready() -> void:
-	get_v_scroll_bar().connect("scrolling", _on_VScrollBar_scrolling)
-	get_viewport().connect("gui_focus_changed", _on_focus_changed)
+	get_v_scroll_bar().scrolling.connect(_on_VScrollBar_scrolling)
+	get_v_scroll_bar().scrolling.connect(_on_HScrollBar_scrolling)
+	get_viewport().gui_focus_changed.connect(_on_focus_changed)
 	for c in get_children():
-		if not c is ScrollBar: content_node = c
-
+		if not c is ScrollBar:
+			content_node = c
 
 func _process(delta: float) -> void:
 	# If no scroll needed, don't apply forces
@@ -56,13 +58,13 @@ func _process(delta: float) -> void:
 	var top_distance : float = content_node.position.y
 	
 	# If overdragged on bottom:
-	if bottom_distance< 0 :
+	if bottom_distance < 0:
 		over_drag_multiplicator_bottom = 1/abs(bottom_distance)*10
 	else:
 		over_drag_multiplicator_bottom = 1
 	
 	# If overdragged on top:
-	if top_distance> 0:
+	if top_distance > 0:
 		over_drag_multiplicator_top = 1/abs(top_distance)*10
 	else:
 		over_drag_multiplicator_top = 1
@@ -75,9 +77,9 @@ func _process(delta: float) -> void:
 		velocity = Vector2(0,0)
 	
 	# Applies counterforces when overdragging
-	if bottom_distance< 0 :
+	if bottom_distance < 0:
 		velocity.y = lerp(velocity.y, -bottom_distance/8, damping)
-	if top_distance> 0:
+	if top_distance > 0:
 		velocity.y = lerp(velocity.y, -top_distance/8, damping)
 	
 	# If using scroll bar dragging, set the content_node's
@@ -95,12 +97,12 @@ func _process(delta: float) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if not any_scroll_bar_dragged():
+		scrollbar_dragging = false
+	
 	if event is InputEventMouseButton:
-		if not event.pressed:
-			scrollbar_dragging = false
 		
 		var scrolled = true
-		
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:  velocity.y -= speed
 			MOUSE_BUTTON_WHEEL_UP:    velocity.y += speed
@@ -141,6 +143,9 @@ func _on_focus_changed(control: Control) -> void:
 func _on_VScrollBar_scrolling() -> void:
 	scrollbar_dragging = true
 
+func _on_HScrollBar_scrolling() -> void:
+	scrollbar_dragging = true
+
 # Scrolls to specific position
 func scroll_to(y_pos: float) -> void:
 	velocity.y = -(y_pos + content_node.position.y) / 8
@@ -179,3 +184,10 @@ func scroll_to_bottom() -> void:
 	content_node.position = pos
 	# Update vertical scroll bar
 	set_v_scroll(-pos.y)
+
+func any_scroll_bar_dragged() -> bool:
+	if get_v_scroll_bar():
+		return get_v_scroll_bar().has_focus()
+	if get_h_scroll_bar():
+		return get_h_scroll_bar().has_focus()
+	return false
