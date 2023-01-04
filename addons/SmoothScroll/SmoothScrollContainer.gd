@@ -13,6 +13,12 @@ var damping := 0.1
 # Scrolls to currently focused child element
 @export
 var follow_focus_ := true
+# Makes the container scrollable vertically
+@export
+var allow_vertical_scroll := true
+# Makes the container scrollable horizontally
+@export
+var allow_horizontal_scroll := true
 # Friction when using mouse wheel
 @export_range(0, 1)
 var friction_scroll := 0.9
@@ -48,7 +54,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	# If no scroll needed, don't apply forces
-	if content_node.size.y - self.size.y < 1:
+	if not should_scroll_vertical():
 		return
 	
 	var d := delta
@@ -112,8 +118,8 @@ func _gui_input(event: InputEvent) -> void:
 			
 	elif event is InputEventScreenDrag:
 		friction = friction_drag
-		if scroll_horizontal: velocity.x = event.relative.x
-		if scroll_vertical:   velocity.y = event.relative.y
+		if should_scroll_horizontal(): velocity.x += event.relative.x / 20
+		if should_scroll_vertical(): velocity.y += event.relative.y / 20
 
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
@@ -191,3 +197,13 @@ func any_scroll_bar_dragged() -> bool:
 	if get_h_scroll_bar():
 		return get_h_scroll_bar().has_focus()
 	return false
+
+func should_scroll_vertical() -> bool:
+	if content_node.size.y - self.size.y < 1:
+		return false
+	return allow_vertical_scroll
+
+func should_scroll_horizontal() -> bool:
+	if content_node.size.x - self.size.x < 1:
+		return false
+	return allow_horizontal_scroll
