@@ -32,7 +32,7 @@ var content_node : Control
 # Current position of `content_node`
 var pos := Vector2(0, 0)
 # When true, `content_node`'s position is only set by dragging the scroll bar
-var scrolling := false
+var scrollbar_dragging := false
 # Current friction
 var friction := 0.9
 
@@ -82,7 +82,7 @@ func _process(delta: float) -> void:
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
-	if scrolling:
+	if scrollbar_dragging:
 		pos = content_node.position
 		return
 	
@@ -97,7 +97,7 @@ func _process(delta: float) -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if not event.pressed:
-			scrolling = false
+			scrollbar_dragging = false
 		
 		var scrolled = true
 		
@@ -139,7 +139,7 @@ func _on_focus_changed(control: Control) -> void:
 		scroll_to(scroll_offset)
 
 func _on_VScrollBar_scrolling() -> void:
-	scrolling = true
+	scrollbar_dragging = true
 
 # Scrolls to specific position
 func scroll_to(y_pos: float) -> void:
