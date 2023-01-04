@@ -12,8 +12,8 @@ config_version=5
 
 config/name="Smooth Scroll"
 run/main_scene="res://example.tscn"
-config/features=PackedStringArray("4.0", "Vulkan Clustered")
-config/icon="res://icon.png"
+config/features=PackedStringArray("4.0")
+config/icon="res://addons/SmoothScroll/class-icon.svg"
 
 [editor_plugins]
 

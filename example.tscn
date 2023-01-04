@@ -11,11 +11,16 @@ func _ready():
 "
 
 [node name="Example" type="Control"]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = SubResource("GDScript_xo176")
 
 [node name="SmoothScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 0
 offset_left = 259.0
 offset_top = 147.0
 offset_right = 649.0
@@ -24,12 +29,12 @@ script = ExtResource("1_su8ig")
 
 [node name="Control" type="Control" parent="SmoothScrollContainer"]
 custom_minimum_size = Vector2(0, 943)
-offset_right = 390.0
-offset_bottom = 943.0
+layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="RichTextLabel" type="RichTextLabel" parent="SmoothScrollContainer/Control"]
+layout_mode = 0
 offset_right = 390.0
 offset_bottom = 246.0
 size_flags_horizontal = 3
@@ -58,18 +63,21 @@ quasi aliquam eligendi, placeat qui corporis!"
 fit_content_height = true
 
 [node name="Button" type="Button" parent="SmoothScrollContainer/Control"]
+layout_mode = 0
 offset_left = 72.0
 offset_top = 166.0
 offset_right = 155.0
 offset_bottom = 212.0
 
 [node name="Button2" type="Button" parent="SmoothScrollContainer/Control"]
+layout_mode = 0
 offset_left = 182.0
 offset_top = 369.0
 offset_right = 265.0
 offset_bottom = 415.0
 
 [node name="Button3" type="Button" parent="SmoothScrollContainer/Control"]
+layout_mode = 0
 offset_left = 74.0
 offset_top = 487.0
 offset_right = 157.0
