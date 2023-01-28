@@ -124,9 +124,8 @@ func _gui_input(event: InputEvent) -> void:
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
 	var is_child := false
-	for child in content_node.get_children():
-		if child == control:
-			is_child = true
+	if content_node.is_ancestor_of(control):
+		is_child = true
 	if not is_child:
 		return
 	if not follow_focus_:
