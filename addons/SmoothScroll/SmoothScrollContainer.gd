@@ -42,6 +42,8 @@ var pos := Vector2(0, 0)
 var scrollbar_dragging := false
 # Current friction
 var friction := 0.9
+# When ture, `content_node` follows drag position
+var content_dragging = false
 
 
 func _ready() -> void:
@@ -75,9 +77,6 @@ func _process(delta: float) -> void:
 	else:
 		over_drag_multiplicator_top = 1
 	
-	# Simulate friction
-	velocity *= friction
-	
 	# If velocity is too low, just set it to 0
 	if velocity.length() <= just_stop_under:
 		velocity = Vector2(0,0)
@@ -100,6 +99,9 @@ func _process(delta: float) -> void:
 	
 	# Update vertical scroll bar
 	set_v_scroll(-pos.y)
+	
+	# Simulate friction
+	velocity *= friction
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -115,11 +117,18 @@ func _gui_input(event: InputEvent) -> void:
 			_:                  scrolled = false
 			
 		if scrolled: friction = friction_scroll
-			
-	elif event is InputEventScreenDrag:
-		friction = friction_drag
-		if should_scroll_horizontal(): velocity.x += event.relative.x / 20
-		if should_scroll_vertical(): velocity.y += event.relative.y / 20
+	
+	if event is InputEventScreenDrag:
+		if content_dragging:
+			velocity.y = event.relative.y
+	
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			content_dragging = true
+			friction = 0.0
+		else:
+			content_dragging = false
+			friction = friction_drag
 
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
