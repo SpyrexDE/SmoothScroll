@@ -193,18 +193,13 @@ func _on_focus_changed(control: Control) -> void:
 		return
 	
 	var focus_size = control.size.y
-	var focus_top = control.position.y
+	var focus_top = control.global_position.y - self.global_position.y
 	
-	var scroll_size = size.y
-	var scroll_top = get_v_scroll()
-	var scroll_bottom = scroll_top + scroll_size - focus_size
+	if focus_top < 0.0:
+		scroll_to(content_node.position.y - focus_top)
 	
-	if focus_top < scroll_top:
-		scroll_to(focus_top)
-	
-	if focus_top > scroll_bottom:
-		var scroll_offset = scroll_top + focus_top - scroll_bottom
-		scroll_to(scroll_offset)
+	if focus_top + focus_size > self.size.y:
+		scroll_to(content_node.position.y - focus_top - focus_size + self.size.y)
 
 func _on_VScrollBar_scrolling() -> void:
 	scrollbar_dragging = true
@@ -214,7 +209,9 @@ func _on_HScrollBar_scrolling() -> void:
 
 # Scrolls to specific position
 func scroll_to(y_pos: float) -> void:
-	velocity.y = -(y_pos + content_node.position.y) / 8
+	velocity.y = 0.0
+	var tween = create_tween()
+	tween.tween_property(self, "pos:y", y_pos, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
 # Scrolls up a page
 func scroll_page_up() -> void:
