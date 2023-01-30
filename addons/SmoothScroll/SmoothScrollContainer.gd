@@ -7,9 +7,12 @@ extends ScrollContainer
 # Drag impact for one scroll input
 @export_range(0, 10, 0.01, "or_greater")
 var speed := 5.0
-# Softness of damping when "overdragging"
+# Softness of damping when "overdragging" with wheel button
 @export_range(0, 1)
-var damping := 0.1
+var damping_scroll := 0.1
+# Softness of damping when "overdragging" with dragging
+@export_range(0, 1)
+var damping_drag := 0.3
 # Scrolls to currently focused child element
 @export
 var follow_focus_ := true
@@ -46,6 +49,8 @@ var friction := 0.9
 var content_dragging = false
 # If it bounce last frame
 var bounce = true
+# Damping to use
+var damping = 0.1
 
 
 func _ready() -> void:
@@ -163,7 +168,9 @@ func _gui_input(event: InputEvent) -> void:
 					bounce = false
 			_:                  scrolled = false
 			
-		if scrolled: friction = friction_scroll
+		if scrolled: 
+			friction = friction_scroll
+			damping = damping_scroll
 	
 	if event is InputEventScreenDrag:
 		if content_dragging:
@@ -177,6 +184,7 @@ func _gui_input(event: InputEvent) -> void:
 			content_dragging = false
 			friction = friction_drag
 			bounce = false
+			damping = damping_drag
 	# Handle input
 	get_tree().get_root().set_input_as_handled()
 
