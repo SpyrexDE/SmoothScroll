@@ -88,10 +88,11 @@ func _process(delta: float) -> void:
 	
 	# Applies counterforces when overdragging
 	if not content_dragging:
+		var stop_distance = 0.0 # Distance it takes to stop
+		var dist = 0.0 # To see whether it is over bounce
+		var vel_y = velocity.y # Store velocity.y
+	
 		if bottom_distance < 0:
-			var stop_distance = 0.0 # Distance it takes to stop
-			var dist = 0.0 # To see whether it is over bounce
-			var vel_y = velocity.y # Store velocity.y
 			if velocity.y >= 0:
 				# Calculate dist
 				for i in stop_frame:
@@ -110,9 +111,6 @@ func _process(delta: float) -> void:
 			elif bounce: velocity.y = (friction-1) * bottom_distance
 		
 		if top_distance > 0:
-			var stop_distance = 0.0 # Distance it takes to stop
-			var dist = 0.0 # To see whether it is over bounce
-			var vel_y = velocity.y # Store velocity.y
 			if velocity.y <= 0:
 				# Calculate dist
 				for i in stop_frame:
