@@ -5,8 +5,8 @@
 extends ScrollContainer
 
 # Drag impact for one scroll input
-@export_range(1, 10)
-var speed := 2
+@export_range(0, 10, 0.01, "or_greater")
+var speed := 5.0
 # Softness of damping when "overdragging"
 @export_range(0, 1)
 var damping := 0.1
