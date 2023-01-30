@@ -95,7 +95,7 @@ func _process(delta: float) -> void:
 		if bottom_distance < 0:
 			if velocity.y >= 0:
 				# Calculate dist
-				for i in stop_frame:
+				for i in stop_frame+1:
 					stop_distance += abs(vel_y)
 					vel_y *= friction
 					dist = stop_distance - abs(bottom_distance)
@@ -113,7 +113,7 @@ func _process(delta: float) -> void:
 		if top_distance > 0:
 			if velocity.y <= 0:
 				# Calculate dist
-				for i in stop_frame:
+				for i in stop_frame+1:
 					stop_distance += abs(vel_y)
 					vel_y *= friction
 					dist = stop_distance - abs(top_distance)
