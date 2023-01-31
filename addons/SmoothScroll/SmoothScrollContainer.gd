@@ -51,7 +51,7 @@ var damping = 0.1
 
 func _ready() -> void:
 	get_v_scroll_bar().scrolling.connect(_on_VScrollBar_scrolling)
-	get_v_scroll_bar().scrolling.connect(_on_HScrollBar_scrolling)
+	get_h_scroll_bar().scrolling.connect(_on_HScrollBar_scrolling)
 	get_viewport().gui_focus_changed.connect(_on_focus_changed)
 	for c in get_children():
 		if not c is ScrollBar:
