@@ -28,8 +28,11 @@ offset_bottom = 393.0
 script = ExtResource("1_su8ig")
 
 [node name="Control" type="Control" parent="SmoothScrollContainer"]
-custom_minimum_size = Vector2(0, 943)
+custom_minimum_size = Vector2i(0, 943)
 layout_mode = 2
+anchors_preset = 0
+offset_right = 382.0
+offset_bottom = 943.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 

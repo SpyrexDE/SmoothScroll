@@ -33,10 +33,6 @@ var friction_drag := 0.9
 var velocity := Vector2(0,0)
 # Below this value, velocity is set to `0`
 var just_stop_under := 0.01
-# Current counterforce for "overdragging" on the top
-var over_drag_multiplicator_top := 1
-# Current counterforce for "overdragging" on the bottom
-var over_drag_multiplicator_bottom := 1
 # Control node to move when scrolling
 var content_node : Control
 # Current position of `content_node`
@@ -74,18 +70,6 @@ func _process(delta: float) -> void:
 	# How long it will take to stop scrolling
 	var stop_frame = log(just_stop_under/abs(velocity.y+0.001))/log(friction*0.999)
 	stop_frame = floor(max(stop_frame, 0.0))
-	
-	# If overdragged on bottom:
-	if bottom_distance < 0:
-		over_drag_multiplicator_bottom = 1/abs(bottom_distance)*10
-	else:
-		over_drag_multiplicator_bottom = 1
-	
-	# If overdragged on top:
-	if top_distance > 0:
-		over_drag_multiplicator_top = 1/abs(top_distance)*10
-	else:
-		over_drag_multiplicator_top = 1
 	
 	# If velocity is too low, just set it to 0
 	if velocity.length() <= just_stop_under:
