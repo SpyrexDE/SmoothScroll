@@ -164,7 +164,13 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenDrag:
 		if content_dragging:
-			velocity.y = event.relative.y
+			var bottom_distance : float = content_node.position.y + content_node.size.y - self.size.y
+			var top_distance : float = content_node.position.y
+			if top_distance > 0.0: 
+				velocity.y = event.relative.y/(1+top_distance*damping_drag/8)
+			elif bottom_distance < 0.0:
+				velocity.y = event.relative.y/(1-bottom_distance*damping_drag/8)
+			else: velocity.y = event.relative.y
 	
 	if event is InputEventScreenTouch:
 		if event.pressed:
