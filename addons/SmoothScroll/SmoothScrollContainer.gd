@@ -5,11 +5,14 @@
 extends ScrollContainer
 
 # Drag impact for one scroll input
-@export_range(1, 10)
-var speed := 2
-# Softness of damping when "overdragging"
+@export_range(0, 10, 0.01, "or_greater")
+var speed := 5.0
+# Softness of damping when "overdragging" with wheel button
 @export_range(0, 1)
-var damping := 0.1
+var damping_scroll := 0.1
+# Softness of damping when "overdragging" with dragging
+@export_range(0, 1)
+var damping_drag := 0.1
 # Scrolls to currently focused child element
 @export
 var follow_focus_ := true
@@ -24,16 +27,12 @@ var allow_horizontal_scroll := true
 var friction_scroll := 0.9
 # Friction when using touch
 @export_range(0, 1)
-var friction_drag := 0.97
+var friction_drag := 0.9
 
 # Current velocity of the `content_node`
 var velocity := Vector2(0,0)
 # Below this value, velocity is set to `0`
 var just_stop_under := 0.01
-# Current counterforce for "overdragging" on the top
-var over_drag_multiplicator_top := 1
-# Current counterforce for "overdragging" on the bottom
-var over_drag_multiplicator_bottom := 1
 # Control node to move when scrolling
 var content_node : Control
 # Current position of `content_node`
@@ -44,6 +43,10 @@ var scrollbar_dragging := false
 var friction := 0.9
 # When ture, `content_node` follows drag position
 var content_dragging = false
+# If it bounce last frame
+var bounce = true
+# Damping to use
+var damping = 0.1
 
 
 func _ready() -> void:
@@ -64,28 +67,55 @@ func _process(delta: float) -> void:
 	var bottom_distance : float = content_node.position.y + content_node.size.y - self.size.y
 	# Distance between content_node and top of the scroll box
 	var top_distance : float = content_node.position.y
-	
-	# If overdragged on bottom:
-	if bottom_distance < 0:
-		over_drag_multiplicator_bottom = 1/abs(bottom_distance)*10
-	else:
-		over_drag_multiplicator_bottom = 1
-	
-	# If overdragged on top:
-	if top_distance > 0:
-		over_drag_multiplicator_top = 1/abs(top_distance)*10
-	else:
-		over_drag_multiplicator_top = 1
+	# How long it will take to stop scrolling
+	var stop_frame = log(just_stop_under/abs(velocity.y+0.001))/log(friction*0.999)
+	stop_frame = floor(max(stop_frame, 0.0))
 	
 	# If velocity is too low, just set it to 0
 	if velocity.length() <= just_stop_under:
 		velocity = Vector2(0,0)
 	
 	# Applies counterforces when overdragging
-	if bottom_distance < 0:
-		velocity.y = lerp(velocity.y, -bottom_distance/8, damping)
-	if top_distance > 0:
-		velocity.y = lerp(velocity.y, -top_distance/8, damping)
+	if not content_dragging:
+		var stop_distance = 0.0 # Distance it takes to stop
+		var dist = 0.0 # To see whether it is over bounce
+		var vel_y = velocity.y # Store velocity.y
+	
+		if bottom_distance < 0:
+			if velocity.y >= 0:
+				# Calculate dist
+				for i in stop_frame+1:
+					stop_distance += abs(vel_y)
+					vel_y *= friction
+					dist = stop_distance - abs(bottom_distance)
+					if dist > 0.0: break
+				# Just snap to the boundary if close enough
+				if abs(bottom_distance) < 0.4:
+					velocity.y = 0.0
+					pos.y = self.size.y - content_node.size.y
+			# How it bounce
+			if velocity.y <= 0 or dist < 0.0 :
+				velocity.y = lerp(velocity.y, -bottom_distance/8, damping)
+				bounce = true
+			elif bounce: velocity.y = (friction-1) * bottom_distance
+		
+		if top_distance > 0:
+			if velocity.y <= 0:
+				# Calculate dist
+				for i in stop_frame+1:
+					stop_distance += abs(vel_y)
+					vel_y *= friction
+					dist = stop_distance - abs(top_distance)
+					if dist > 0.0: break
+				# Just snap to the boundary if close enough
+				if abs(top_distance) < 0.4:
+					velocity.y = 0.0
+					pos.y = 0.0
+			# How it bounce
+			if velocity.y >= 0 or dist < 0.0 :
+				velocity.y = lerp(velocity.y, -top_distance/8, damping)
+				bounce = true
+			elif bounce: velocity.y = (friction-1) * top_distance
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -112,11 +142,19 @@ func _gui_input(event: InputEvent) -> void:
 		
 		var scrolled = true
 		match event.button_index:
-			MOUSE_BUTTON_WHEEL_DOWN:  velocity.y -= speed
-			MOUSE_BUTTON_WHEEL_UP:    velocity.y += speed
+			MOUSE_BUTTON_WHEEL_DOWN:
+				if event.pressed:
+					velocity.y -= speed
+					bounce = false
+			MOUSE_BUTTON_WHEEL_UP:
+				if event.pressed:
+					velocity.y += speed
+					bounce = false
 			_:                  scrolled = false
 			
-		if scrolled: friction = friction_scroll
+		if scrolled: 
+			friction = friction_scroll
+			damping = damping_scroll
 	
 	if event is InputEventScreenDrag:
 		if content_dragging:
@@ -129,6 +167,10 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			content_dragging = false
 			friction = friction_drag
+			bounce = false
+			damping = damping_drag
+	# Handle input
+	get_tree().get_root().set_input_as_handled()
 
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
@@ -141,18 +183,13 @@ func _on_focus_changed(control: Control) -> void:
 		return
 	
 	var focus_size = control.size.y
-	var focus_top = control.position.y
+	var focus_top = control.global_position.y - self.global_position.y
 	
-	var scroll_size = size.y
-	var scroll_top = get_v_scroll()
-	var scroll_bottom = scroll_top + scroll_size - focus_size
+	if focus_top < 0.0:
+		scroll_to(content_node.position.y - focus_top)
 	
-	if focus_top < scroll_top:
-		scroll_to(focus_top)
-	
-	if focus_top > scroll_bottom:
-		var scroll_offset = scroll_top + focus_top - scroll_bottom
-		scroll_to(scroll_offset)
+	if focus_top + focus_size > self.size.y:
+		scroll_to(content_node.position.y - focus_top - focus_size + self.size.y)
 
 func _on_VScrollBar_scrolling() -> void:
 	scrollbar_dragging = true
@@ -162,7 +199,9 @@ func _on_HScrollBar_scrolling() -> void:
 
 # Scrolls to specific position
 func scroll_to(y_pos: float) -> void:
-	velocity.y = -(y_pos + content_node.position.y) / 8
+	velocity.y = 0.0
+	var tween = create_tween()
+	tween.tween_property(self, "pos:y", y_pos, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
 # Scrolls up a page
 func scroll_page_up() -> void:
