@@ -12,7 +12,7 @@ var speed := 5.0
 var damping_scroll := 0.1
 # Softness of damping when "overdragging" with dragging
 @export_range(0, 1)
-var damping_drag := 0.3
+var damping_drag := 0.1
 # Scrolls to currently focused child element
 @export
 var follow_focus_ := true
@@ -27,7 +27,7 @@ var allow_horizontal_scroll := true
 var friction_scroll := 0.9
 # Friction when using touch
 @export_range(0, 1)
-var friction_drag := 0.97
+var friction_drag := 0.9
 
 # Current velocity of the `content_node`
 var velocity := Vector2(0,0)
