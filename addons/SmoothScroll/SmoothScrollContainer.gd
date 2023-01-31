@@ -52,6 +52,7 @@ var damping = 0.1
 func _ready() -> void:
 	get_v_scroll_bar().scrolling.connect(_on_VScrollBar_scrolling)
 	get_h_scroll_bar().scrolling.connect(_on_HScrollBar_scrolling)
+	get_v_scroll_bar().gui_input.connect(_scrollbar_input)
 	get_viewport().gui_focus_changed.connect(_on_focus_changed)
 	for c in get_children():
 		if not c is ScrollBar:
@@ -133,6 +134,11 @@ func _process(delta: float) -> void:
 	# Simulate friction
 	velocity *= friction
 
+func _scrollbar_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
+		or event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_gui_input(event)
 
 func _gui_input(event: InputEvent) -> void:
 	if not any_scroll_bar_dragged():
