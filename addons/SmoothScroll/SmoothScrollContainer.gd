@@ -59,6 +59,8 @@ var top_distance := 0.0
 var right_distance := 0.0
 # Distance between content_node and left of the scroll box
 var left_distance := 0.0
+# Content node position where dragging starts
+var drag_start_pos := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -239,23 +241,26 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenDrag:
 		if content_dragging:
+			var y_delta = content_node.position.y - drag_start_pos.y
+			var x_delta = content_node.position.x - drag_start_pos.x
 			
-			if top_distance > 0.0: 
-				velocity.y = event.relative.y/(1+top_distance*damping_drag)
-			elif bottom_distance < 0.0:
-				velocity.y = event.relative.y/(1-bottom_distance*damping_drag)
+			if top_distance > 0.0 and min(top_distance, y_delta) > 0.0: 
+				velocity.y = event.relative.y/(1+min(top_distance, y_delta)*damping_drag)
+			elif bottom_distance < 0.0 and max(bottom_distance, y_delta) < 0.0:
+				velocity.y = event.relative.y/(1-max(bottom_distance, y_delta)*damping_drag)
 			else: velocity.y = event.relative.y
 			
-			if left_distance > 0.0: 
-				velocity.x = event.relative.x/(1+left_distance*damping_drag)
-			elif right_distance < 0.0:
-				velocity.x = event.relative.x/(1-right_distance*damping_drag)
+			if left_distance > 0.0 and min(left_distance, x_delta) > 0.0: 
+				velocity.x = event.relative.x/(1+min(left_distance, x_delta)*damping_drag)
+			elif right_distance < 0.0 and max(right_distance, x_delta) < 0.0:
+				velocity.x = event.relative.x/(1-max(right_distance, x_delta)*damping_drag)
 			else: velocity.x = event.relative.x
 	
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			content_dragging = true
 			friction = 0.0
+			drag_start_pos = content_node.position
 		else:
 			content_dragging = false
 			friction = friction_drag
