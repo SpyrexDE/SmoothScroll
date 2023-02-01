@@ -51,6 +51,14 @@ var bounce_x = true
 var bounce_y = true
 # Damping to use
 var damping = 0.1
+# Distance between content_node's bottom and bottom of the scroll box 
+var bottom_distance := 0.0
+# Distance between content_node and top of the scroll box
+var top_distance := 0.0
+# Distance between content_node's right and right of the scroll box 
+var right_distance := 0.0
+# Distance between content_node and left of the scroll box
+var left_distance := 0.0
 
 
 func _ready() -> void:
@@ -64,6 +72,7 @@ func _ready() -> void:
 			content_node = c
 
 func _process(delta: float) -> void:
+	calculate_distance()
 	scroll_x()
 	scroll_y()
 	# Update vertical scroll bar
@@ -73,15 +82,21 @@ func _process(delta: float) -> void:
 	get_h_scroll_bar().set_value_no_signal(-pos.x)
 	get_h_scroll_bar().queue_redraw()
 
+func calculate_distance():
+	bottom_distance = content_node.position.y + content_node.size.y - self.size.y
+	top_distance = content_node.position.y
+	right_distance = content_node.position.x + content_node.size.x - self.size.x
+	left_distance = content_node.position.x
+	if get_v_scroll_bar().visible:
+		right_distance += get_v_scroll_bar().size.x
+	if get_h_scroll_bar().visible:
+		bottom_distance += get_h_scroll_bar().size.y
+
 func scroll_x():
 	# If no scroll needed, don't apply forces
 	if not should_scroll_horizontal():
 		return
 	
-	# Distance between content_node's right and right of the scroll box 
-	var right_distance : float = content_node.position.x + content_node.size.x - self.size.x
-	# Distance between content_node and left of the scroll box
-	var left_distance : float = content_node.position.x
 	# How long it will take to stop scrolling
 	var stop_frame = log(just_stop_under/abs(velocity.x+0.001))/log(friction*0.999)
 	stop_frame = floor(max(stop_frame, 0.0))
@@ -97,13 +112,13 @@ func scroll_x():
 			var a = over_bounce(-velocity.x, -right_distance, stop_frame, bounce_x)
 			velocity.x = -a[0]
 			bounce_x = a[1]
-			if a[2]: pos.x = self.size.x - content_node.size.x
+			if a[2]: pos.x -= right_distance
 		
 		if left_distance > 0:
 			var a = over_bounce(velocity.x, left_distance, stop_frame, bounce_x)
 			velocity.x = a[0]
 			bounce_x = a[1]
-			if a[2]: pos.x = 0.0
+			if a[2]: pos.x -= left_distance
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -124,10 +139,6 @@ func scroll_y():
 	if not should_scroll_vertical():
 		return
 	
-	# Distance between content_node's bottom and bottom of the scroll box 
-	var bottom_distance : float = content_node.position.y + content_node.size.y - self.size.y
-	# Distance between content_node and top of the scroll box
-	var top_distance : float = content_node.position.y
 	# How long it will take to stop scrolling
 	var stop_frame = log(just_stop_under/abs(velocity.y+0.001))/log(friction*0.999)
 	stop_frame = floor(max(stop_frame, 0.0))
@@ -143,13 +154,13 @@ func scroll_y():
 			var a = over_bounce(-velocity.y, -bottom_distance, stop_frame, bounce_y)
 			velocity.y = -a[0]
 			bounce_y = a[1]
-			if a[2]: pos.y = self.size.y - content_node.size.y
+			if a[2]: pos.y -= bottom_distance
 		
 		if top_distance > 0:
 			var a = over_bounce(velocity.y, top_distance, stop_frame, bounce_y)
 			velocity.y = a[0]
 			bounce_y = a[1]
-			if a[2]: pos.y = 0.0
+			if a[2]: pos.y -= top_distance
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -228,10 +239,6 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenDrag:
 		if content_dragging:
-			var bottom_distance : float = content_node.position.y + content_node.size.y - self.size.y
-			var top_distance : float = content_node.position.y
-			var right_distance : float = content_node.position.x + content_node.size.x - self.size.x
-			var left_distance : float = content_node.position.x
 			
 			if top_distance > 0.0: 
 				velocity.y = event.relative.y/(1+top_distance*damping_drag)
