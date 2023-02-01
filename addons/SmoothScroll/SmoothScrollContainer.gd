@@ -92,45 +92,18 @@ func scroll_x():
 	
 	# Applies counterforces when overdragging
 	if not content_dragging:
-		var stop_distance = 0.0 # Distance it takes to stop
-		var dist_x = 0.0 # To see whether it is over bounce
-		var vel_x = velocity.x # Store velocity.x
-	
+		
 		if right_distance < 0:
-			if velocity.x >= 0:
-				# Calculate dist
-				for i in stop_frame+1:
-					stop_distance += abs(vel_x)
-					vel_x *= friction
-					dist_x = stop_distance - abs(right_distance)
-					if dist_x > 0.0: break
-				# Just snap to the boundary if close enough
-				if abs(right_distance) < 0.4:
-					velocity.x = 0.0
-					pos.x = self.size.x - content_node.size.x
-			# How it bounce
-			if velocity.x <= 0 or dist_x < 0.0 :
-				velocity.x = lerp(velocity.x, -right_distance/8, damping)
-				bounce_x = true
-			elif bounce_x: velocity.x = (friction-1) * right_distance
+			var a = over_bounce(-velocity.x, -right_distance, stop_frame, bounce_x)
+			velocity.x = -a[0]
+			bounce_x = a[1]
+			if a[2]: pos.x = self.size.x - content_node.size.x
 		
 		if left_distance > 0:
-			if velocity.x <= 0:
-				# Calculate dist
-				for i in stop_frame+1:
-					stop_distance += abs(vel_x)
-					vel_x *= friction
-					dist_x = stop_distance - abs(left_distance)
-					if dist_x > 0.0: break
-				# Just snap to the boundary if close enough
-				if abs(left_distance) < 0.4:
-					velocity.x = 0.0
-					pos.x = 0.0
-			# How it bounce
-			if velocity.x >= 0 or dist_x < 0.0 :
-				velocity.x = lerp(velocity.x, -left_distance/8, damping)
-				bounce_x = true
-			elif bounce_x: velocity.x = (friction-1) * left_distance
+			var a = over_bounce(velocity.x, left_distance, stop_frame, bounce_x)
+			velocity.x = a[0]
+			bounce_x = a[1]
+			if a[2]: pos.x = 0.0
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -165,45 +138,18 @@ func scroll_y():
 	
 	# Applies counterforces when overdragging
 	if not content_dragging:
-		var stop_distance = 0.0 # Distance it takes to stop
-		var dist_y = 0.0 # To see whether it is over bounce
-		var vel_y = velocity.y # Store velocity.y
-	
+		
 		if bottom_distance < 0:
-			if velocity.y >= 0:
-				# Calculate dist
-				for i in stop_frame+1:
-					stop_distance += abs(vel_y)
-					vel_y *= friction
-					dist_y = stop_distance - abs(bottom_distance)
-					if dist_y > 0.0: break
-				# Just snap to the boundary if close enough
-				if abs(bottom_distance) < 0.4:
-					velocity.y = 0.0
-					pos.y = self.size.y - content_node.size.y
-			# How it bounce
-			if velocity.y <= 0 or dist_y < 0.0 :
-				velocity.y = lerp(velocity.y, -bottom_distance/8, damping)
-				bounce_y = true
-			elif bounce_y: velocity.y = (friction-1) * bottom_distance
+			var a = over_bounce(-velocity.y, -bottom_distance, stop_frame, bounce_y)
+			velocity.y = -a[0]
+			bounce_y = a[1]
+			if a[2]: pos.y = self.size.y - content_node.size.y
 		
 		if top_distance > 0:
-			if velocity.y <= 0:
-				# Calculate dist
-				for i in stop_frame+1:
-					stop_distance += abs(vel_y)
-					vel_y *= friction
-					dist_y = stop_distance - abs(top_distance)
-					if dist_y > 0.0: break
-				# Just snap to the boundary if close enough
-				if abs(top_distance) < 0.4:
-					velocity.y = 0.0
-					pos.y = 0.0
-			# How it bounce
-			if velocity.y >= 0 or dist_y < 0.0 :
-				velocity.y = lerp(velocity.y, -top_distance/8, damping)
-				bounce_y = true
-			elif bounce_y: velocity.y = (friction-1) * top_distance
+			var a = over_bounce(velocity.y, top_distance, stop_frame, bounce_y)
+			velocity.y = a[0]
+			bounce_y = a[1]
+			if a[2]: pos.y = 0.0
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -218,6 +164,31 @@ func scroll_y():
 	
 	# Simulate friction
 	velocity.y *= friction
+
+func over_bounce(vel:float, distance:float, stop_frame:float, bounce:bool)->Array:
+	var stop_distance = 0.0 # Distance it takes to stop
+	var over_bounce = 0.0 # To see whether it is over bounce
+	var vel_temp = vel # Store velocity temporarily
+	var snap = false
+	
+	if vel <= 0:
+		# Calculate dist
+		for i in stop_frame+1:
+			stop_distance -= vel_temp
+			vel_temp *= friction
+			over_bounce = stop_distance - distance
+			if over_bounce > 0.0: break
+		# Just snap to the boundary if close enough
+		if distance < 0.4:
+			vel = 0.0
+			snap = true
+	# How it bounce
+	if vel >= 0 or over_bounce < 0.0 :
+		vel = lerp(vel, -distance/8, damping)
+		bounce = true
+	elif bounce: vel = (friction-1) * distance
+	
+	return [vel, bounce, snap]
 
 func _scrollbar_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
