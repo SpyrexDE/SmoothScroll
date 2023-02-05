@@ -8,7 +8,5 @@ Activate the addon in the project settings' addon tab,
 Click the "+" button to add a new node and select "SmoothScrollContainer" instead "ScrollContainer".
 To add smooth scrollling to existing ScrollContainers, rightclick the node and select change type. Then select "SmoothScrollContainer".
 
-Horizontal scroll will be implemented soon.
-
 
 `Mouse scroll icon by Greg Fiske from the Noun Project`
