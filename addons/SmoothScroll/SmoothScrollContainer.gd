@@ -73,8 +73,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	calculate_distance()
-	scroll_x()
-	scroll_y()
+	scroll(true, velocity.y, pos.y)
+	scroll(false, velocity.x, pos.x)
 	# Update vertical scroll bar
 	get_v_scroll_bar().set_value_no_signal(-pos.y)
 	get_v_scroll_bar().queue_redraw()
@@ -100,127 +100,94 @@ func stop_frame(vel:float) -> float:
 	stop_frame = floor(max(stop_frame, 0.0))
 	return stop_frame
 
-func x_will_stop_inside(vel_x:float) -> bool:
+func will_stop_within(vertical : bool, vel:float) -> bool:
 	# Calculate stop frame
-	var x_stop_frame = stop_frame(vel_x)
+	var stop_frame = stop_frame(vel)
 	# Distance it takes to stop scrolling
-	var x_stop_distance = vel_x*(1-pow(friction,x_stop_frame))/(1-friction)
+	var stop_distance = vel*(1-pow(friction,stop_frame))/(1-friction)
 	# Position it will stop at
-	var x_stop_pos = pos.x + x_stop_distance
-	# Whether content node will stop inside the container
-	return x_stop_pos <= 0.0 and x_stop_pos >= min(self.size.x - content_node.size.x, 0.0)
+	var stop_pos
+	if vertical:
+		stop_pos = pos.y + stop_distance
+	else:
+		stop_pos = pos.x + stop_distance
 
-func y_will_stop_inside(vel_y:float) -> bool:
-	# Calculate stop frame
-	var y_stop_frame = stop_frame(vel_y)
-	# Clamp and floor
-	y_stop_frame = floor(max(y_stop_frame, 0.0))
-	# Distance it takes to stop scrolling
-	var y_stop_distance = vel_y*(1-pow(friction,y_stop_frame))/(1-friction)
-	# Position it will stop at
-	var y_stop_pos = pos.y + y_stop_distance
-	# Whether content node will stop inside the container
-	return y_stop_pos <= 0.0 and y_stop_pos >= min(self.size.y - content_node.size.y, 0.0)
+	var diff = self.size.y - content_node.size.y if vertical else self.size.x - content_node.size.x
 
-func scroll_x():
+	# Whether content node will stop inside the container
+	return stop_pos <= 0.0 and stop_pos >= min(diff, 0.0)
+
+func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 	# If no scroll needed, don't apply forces
-	if not should_scroll_horizontal():
-		return
+	if vertical:
+		if not should_scroll_vertical():
+			return
+	else:
+		if not should_scroll_horizontal():
+			return
 	
 	# If velocity is too low, just set it to 0
-	if abs(velocity.x) <= just_stop_under:
-		velocity.x = 0.0
+	if abs(axis_velocity) <= just_stop_under:
+		axis_velocity = 0.0
 	
 	# Applies counterforces when overdragging
 	if not content_dragging:
+		# Left/Right or Top/Bottom depending on x or y
+		var dist1 = bottom_distance if vertical else right_distance
+		var dist2 = top_distance if vertical else left_distance 
 		
-		if right_distance < 0 and not x_will_stop_inside(velocity.x):
+		if dist1 < 0 and not will_stop_within(vertical, axis_velocity):
 			# Apply bounce force
-			velocity.x = lerp(velocity.x, -right_distance/8, damping)
+			axis_velocity = lerp(axis_velocity, -dist1/8, damping)
 			# If it will be fast enough to scroll back next frame
 			# Apply a speed that will make it scroll back exactly
-			if x_will_stop_inside(velocity.x):
-				velocity.x = -right_distance*(1-friction)/(1-pow(friction, stop_frame(velocity.x))) 
+			if will_stop_within(vertical, axis_velocity):
+				axis_velocity = -dist1*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
 			# Snap to boundary if close enough
-			if right_distance > -just_snap_under:
-				velocity.x = 0.0
-				pos.x -= right_distance
+			if dist1 > -just_snap_under:
+				axis_velocity = 0.0
+				axis_pos -= dist1
 		
-		if left_distance > 0 and not x_will_stop_inside(velocity.x):
+		if dist2 > 0 and not will_stop_within(vertical, axis_velocity):
 			# Apply bounce force
-			velocity.x = lerp(velocity.x, -left_distance/8, damping)
+			axis_velocity = lerp(axis_velocity, -dist2/8, damping)
 			# If it will be fast enough to scroll back next frame
 			# Apply a speed that will make it scroll back exactly
-			if x_will_stop_inside(velocity.x):
-				velocity.x = -left_distance*(1-friction)/(1-pow(friction, stop_frame(velocity.x))) 
+			if will_stop_within(vertical, axis_velocity):
+				axis_velocity = -dist2*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
 			# Snap to boundary if close enough
-			if left_distance < just_snap_under:
-				velocity.x = 0.0
-				pos.x -= left_distance
+			if dist2 < just_snap_under:
+				axis_velocity = 0.0
+				axis_pos -= dist2
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
+	if handle_scrollbar_drag():
+		return
+	
+	# Move content node by applying velocity
+	axis_pos += axis_velocity
+	if vertical:
+		content_node.position.y = axis_pos
+		pos.y = axis_pos
+		velocity.y = axis_velocity * friction
+	else:
+		content_node.position.x = axis_pos
+		pos.x = axis_pos
+		velocity.x = axis_velocity * friction
+
+# Returns true when scrollbar was dragged
+func handle_scrollbar_drag() -> bool:
 	if h_scrollbar_dragging:
 		velocity.x = 0.0
 		pos.x = content_node.position.x
-		return
+		return true
 	
-	# Move content node by applying velocity
-	pos.x += velocity.x
-	content_node.position.x = pos.x
-	
-	# Simulate friction
-	velocity.x *= friction
-
-func scroll_y():
-	# If no scroll needed, don't apply forces
-	if not should_scroll_vertical():
-		return
-	
-	# If velocity is too low, just set it to 0
-	if abs(velocity.y) <= just_stop_under:
-		velocity.y = 0.0
-	
-	# Applies counterforces when overdragging
-	if not content_dragging:
-		
-		if bottom_distance < 0 and not y_will_stop_inside(velocity.y):
-			# Apply bounce force
-			velocity.y = lerp(velocity.y, -bottom_distance/8, damping)
-			# If it will be fast enough to scroll back next frame
-			# Apply a speed that will make it scroll back exactly
-			if y_will_stop_inside(velocity.y):
-				velocity.y = -bottom_distance*(1-friction)/(1-pow(friction, stop_frame(velocity.y))) 
-			# Snap to boundary if close enough
-			if bottom_distance > -just_snap_under:
-				velocity.y = 0.0
-				pos.y -= bottom_distance
-		
-		if top_distance > 0 and not y_will_stop_inside(velocity.y):
-			# Apply bounce force
-			velocity.y = lerp(velocity.y, -top_distance/8, damping)
-			# If it will be fast enough to scroll back next frame
-			# Apply a speed that will make it scroll back exactly
-			if y_will_stop_inside(velocity.y):
-				velocity.y = -top_distance*(1-friction)/(1-pow(friction, stop_frame(velocity.y))) 
-			# Snap to boundary if close enouh
-			if top_distance < just_snap_under:
-				velocity.y = 0.0
-				pos.y -= top_distance
-	
-	# If using scroll bar dragging, set the content_node's
-	# position by using the scrollbar position
 	if v_scrollbar_dragging:
 		velocity.y = 0.0
 		pos.y = content_node.position.y
-		return
-	
-	# Move content node by applying velocity
-	pos.y += velocity.y
-	content_node.position.y = pos.y
-	
-	# Simulate friction
-	velocity.y *= friction
+		return true
+	return false
 
 func _scrollbar_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
