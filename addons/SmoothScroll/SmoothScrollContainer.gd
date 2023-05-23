@@ -46,9 +46,9 @@ var v_scrollbar_dragging := false
 # Current friction
 var friction := 0.9
 # When ture, `content_node` follows drag position
-var content_dragging = false
+var content_dragging := false
 # Damping to use
-var damping = 0.1
+var damping := 0.1
 # Distance between content_node's bottom and bottom of the scroll box 
 var bottom_distance := 0.0
 # Distance between content_node and top of the scroll box

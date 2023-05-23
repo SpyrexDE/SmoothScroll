@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://xqy4fhlaf2q3"]
+[gd_scene load_steps=4 format=3 uid="uid://xqy4fhlaf2q3"]
 
 [ext_resource type="Script" path="res://addons/SmoothScroll/SmoothScrollContainer.gd" id="1_su8ig"]
 
@@ -8,6 +8,22 @@ script/source = "extends Control
 
 func _ready():
 	$SmoothScrollContainer/Control/Button.grab_focus()
+"
+
+[sub_resource type="GDScript" id="GDScript_xu50n"]
+script/source = "extends RichTextLabel
+
+
+# Called when the node enters the scene tree for the first time.
+func _process(delta):
+	text = \"\"
+	
+	var thisScript: GDScript = %SmoothScrollContainer.get_script()
+	for propertyInfo in thisScript.get_script_property_list():
+		var propertyName : String = propertyInfo.name
+		var propertyValue = %SmoothScrollContainer.get(propertyName)
+		var propertyType = propertyInfo.usage
+		text += \"[color=green]%s:[/color] %s\\n\" % [propertyName, propertyValue] if propertyType == 4096 else \"[color=yellow]%s:[/color] %s\\n\" % [propertyName, propertyValue]
 "
 
 [node name="Example" type="Control"]
@@ -20,6 +36,7 @@ grow_vertical = 2
 script = SubResource("GDScript_xo176")
 
 [node name="SmoothScrollContainer" type="ScrollContainer" parent="."]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 259.0
 offset_top = 147.0
@@ -82,3 +99,12 @@ offset_left = 74.0
 offset_top = 487.0
 offset_right = 157.0
 offset_bottom = 533.0
+
+[node name="RichTextLabel" type="RichTextLabel" parent="."]
+layout_mode = 0
+offset_left = 678.0
+offset_top = 27.0
+offset_right = 1108.0
+offset_bottom = 581.0
+bbcode_enabled = true
+script = SubResource("GDScript_xu50n")
