@@ -22,6 +22,12 @@ var allow_vertical_scroll := true
 # Makes the container scrollable horizontally
 @export
 var allow_horizontal_scroll := true
+# Enables dragging content using touch input
+@export
+var enable_content_dragging_touch := true
+# Enables dragging content using mouse input
+@export
+var enable_content_dragging_mouse := true
 # Friction when using mouse wheel
 @export_range(0, 1)
 var friction_scroll := 0.9
@@ -70,6 +76,9 @@ func _ready() -> void:
 	for c in get_children():
 		if not c is ScrollBar:
 			content_node = c
+	
+	if enable_content_dragging_touch or enable_content_dragging_mouse:
+		remove_mouse_filter(content_node)
 
 func _process(delta: float) -> void:
 	calculate_distance()
@@ -200,7 +209,6 @@ func _gui_input(event: InputEvent) -> void:
 	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
 	
 	if event is InputEventMouseButton:
-		
 		var scrolled = true
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:
@@ -215,13 +223,23 @@ func _gui_input(event: InputEvent) -> void:
 						velocity.x += speed
 					else:
 						velocity.y += speed
+			MOUSE_BUTTON_LEFT:
+				if enable_content_dragging_mouse:
+					if event.pressed:
+						content_dragging = true
+						friction = 0.0
+						drag_start_pos = content_node.position
+					else:
+						content_dragging = false
+						friction = friction_drag
+						damping = damping_drag
 			_:                  scrolled = false
 			
 		if scrolled: 
 			friction = friction_scroll
 			damping = damping_scroll
 	
-	if event is InputEventScreenDrag:
+	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
 		if content_dragging:
 			var y_delta = content_node.position.y - drag_start_pos.y
 			var x_delta = content_node.position.x - drag_start_pos.x
@@ -367,3 +385,13 @@ func should_scroll_horizontal() -> bool:
 	if not allow_horizontal_scroll:
 		velocity.x = 0.0
 	return allow_horizontal_scroll
+
+# Needed to receive touch inputs
+func remove_mouse_filter(node):
+	node.mouse_filter = Control.MOUSE_FILTER_PASS
+	for N in node.get_children():
+		if N.get_child_count() > 0:
+			N.mouse_filter = Control.MOUSE_FILTER_PASS
+			remove_mouse_filter(N)
+		else:
+			N.mouse_filter = Control.MOUSE_FILTER_PASS

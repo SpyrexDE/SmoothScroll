@@ -103,8 +103,8 @@ offset_bottom = 533.0
 [node name="RichTextLabel" type="RichTextLabel" parent="."]
 layout_mode = 0
 offset_left = 678.0
-offset_top = 27.0
+offset_top = 16.0
 offset_right = 1108.0
-offset_bottom = 581.0
+offset_bottom = 632.0
 bbcode_enabled = true
 script = SubResource("GDScript_xu50n")

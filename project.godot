@@ -18,7 +18,3 @@ config/icon="res://addons/SmoothScroll/class-icon.svg"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/SmoothScroll/plugin.cfg")
-
-[input_devices]
-
-pointing/emulate_touch_from_mouse=true
