@@ -101,7 +101,7 @@ func calculate_distance():
 	if get_h_scroll_bar().visible:
 		bottom_distance += get_h_scroll_bar().size.y
 
-func stop_frame(vel:float) -> float:
+func stop_frame(vel : float) -> float:
 	# How long it will take to stop scrolling
 	# 0.001 and 0.999 is to ensure that the denominator is not 0
 	var stop_frame = log(just_stop_under/(abs(vel)+0.001))/log(friction*0.999)
@@ -109,7 +109,7 @@ func stop_frame(vel:float) -> float:
 	stop_frame = floor(max(stop_frame, 0.0))
 	return stop_frame
 
-func will_stop_within(vertical : bool, vel:float) -> bool:
+func will_stop_within(vertical : bool, vel : float) -> bool:
 	# Calculate stop frame
 	var stop_frame = stop_frame(vel)
 	# Distance it takes to stop scrolling
@@ -141,33 +141,9 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 	
 	# Applies counterforces when overdragging
 	if not content_dragging:
-		# Left/Right or Top/Bottom depending on x or y
-		var dist1 = bottom_distance if vertical else right_distance
-		var dist2 = top_distance if vertical else left_distance 
-		
-		if dist1 < 0 and not will_stop_within(vertical, axis_velocity):
-			# Apply bounce force
-			axis_velocity = lerp(axis_velocity, -dist1/8, damping)
-			# If it will be fast enough to scroll back next frame
-			# Apply a speed that will make it scroll back exactly
-			if will_stop_within(vertical, axis_velocity):
-				axis_velocity = -dist1*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
-			# Snap to boundary if close enough
-			if dist1 > -just_snap_under:
-				axis_velocity = 0.0
-				axis_pos -= dist1
-		
-		if dist2 > 0 and not will_stop_within(vertical, axis_velocity):
-			# Apply bounce force
-			axis_velocity = lerp(axis_velocity, -dist2/8, damping)
-			# If it will be fast enough to scroll back next frame
-			# Apply a speed that will make it scroll back exactly
-			if will_stop_within(vertical, axis_velocity):
-				axis_velocity = -dist2*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
-			# Snap to boundary if close enough
-			if dist2 < just_snap_under:
-				axis_velocity = 0.0
-				axis_pos -= dist2
+		var result = handle_overdrag(vertical, axis_velocity, axis_pos)
+		axis_velocity = result[0]
+		axis_pos = result[1]
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -184,6 +160,36 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 		content_node.position.x = axis_pos
 		pos.x = axis_pos
 		velocity.x = axis_velocity * friction
+
+func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -> Array:
+	# Left/Right or Top/Bottom depending on x or y
+	var dist1 = bottom_distance if vertical else right_distance
+	var dist2 = top_distance if vertical else left_distance 
+	
+	if dist1 < 0 and not will_stop_within(vertical, axis_velocity):
+		# Apply bounce force
+		axis_velocity = lerp(axis_velocity, -dist1/8, damping)
+		# If it will be fast enough to scroll back next frame
+		# Apply a speed that will make it scroll back exactly
+		if will_stop_within(vertical, axis_velocity):
+			axis_velocity = -dist1*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
+		# Snap to boundary if close enough
+		if dist1 > -just_snap_under:
+			axis_velocity = 0.0
+			axis_pos -= dist1
+	
+	if dist2 > 0 and not will_stop_within(vertical, axis_velocity):
+		# Apply bounce force
+		axis_velocity = lerp(axis_velocity, -dist2/8, damping)
+		# If it will be fast enough to scroll back next frame
+		# Apply a speed that will make it scroll back exactly
+		if will_stop_within(vertical, axis_velocity):
+			axis_velocity = -dist2*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
+		# Snap to boundary if close enough
+		if dist2 < just_snap_under:
+			axis_velocity = 0.0
+			axis_pos -= dist2
+	return [axis_velocity, axis_pos]
 
 # Returns true when scrollbar was dragged
 func handle_scrollbar_drag() -> bool:
@@ -241,20 +247,7 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
 		if content_dragging:
-			var y_delta = content_node.position.y - drag_start_pos.y
-			var x_delta = content_node.position.x - drag_start_pos.x
-			
-			if top_distance > 0.0 and min(top_distance, y_delta) > 0.0: 
-				velocity.y = event.relative.y/(1+min(top_distance, y_delta)*damping_drag)
-			elif bottom_distance < 0.0 and max(bottom_distance, y_delta) < 0.0:
-				velocity.y = event.relative.y/(1-max(bottom_distance, y_delta)*damping_drag)
-			else: velocity.y = event.relative.y
-			
-			if left_distance > 0.0 and min(left_distance, x_delta) > 0.0: 
-				velocity.x = event.relative.x/(1+min(left_distance, x_delta)*damping_drag)
-			elif right_distance < 0.0 and max(right_distance, x_delta) < 0.0:
-				velocity.x = event.relative.x/(1-max(right_distance, x_delta)*damping_drag)
-			else: velocity.x = event.relative.x
+			handle_content_dragging(event.relative)
 	
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -267,6 +260,21 @@ func _gui_input(event: InputEvent) -> void:
 			damping = damping_drag
 	# Handle input
 	get_tree().get_root().set_input_as_handled()
+
+func handle_content_dragging(relative : Vector2):
+	var y_delta = content_node.position.y - drag_start_pos.y
+	var x_delta = content_node.position.x - drag_start_pos.x
+
+	var calculate_velocity = func calculate_velocity(distance1: float, distance2: float, delta: float, relative: float) -> float:
+		var vel = relative
+		if distance1 > 0.0 and min(distance1, delta) > 0.0:
+			vel = relative / (1 + min(distance1, delta) * damping_drag)
+		elif distance2 < 0.0 and max(distance2, delta) < 0.0:
+			vel = relative / (1 - max(distance2, delta) * damping_drag)
+		return vel
+	
+	velocity.y = calculate_velocity.call(top_distance, bottom_distance, y_delta, relative.y)
+	velocity.x = calculate_velocity.call(left_distance, right_distance, x_delta, relative.x)
 
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:

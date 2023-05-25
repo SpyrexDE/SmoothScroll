@@ -15,6 +15,10 @@ run/main_scene="res://example.tscn"
 config/features=PackedStringArray("4.0")
 config/icon="res://addons/SmoothScroll/class-icon.svg"
 
+[display]
+
+window/stretch/mode="canvas_items"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/SmoothScroll/plugin.cfg")
