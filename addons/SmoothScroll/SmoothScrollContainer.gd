@@ -234,33 +234,35 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 
 func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -> Array:
 	# Left/Right or Top/Bottom depending on x or y
-	var dist1 = bottom_distance if vertical else right_distance
-	var dist2 = top_distance if vertical else left_distance 
+	var dist1 = top_distance if vertical else left_distance
+	var dist2 = bottom_distance if vertical else right_distance
 	
-	if dist1 < 0 and not will_stop_within(vertical, axis_velocity):
+	var calculate = func(dist):
+		print(axis_velocity)
 		# Apply bounce force
-		axis_velocity = lerp(axis_velocity, -dist1/8, damping)
+		axis_velocity = lerp(axis_velocity, -dist/8, damping)
 		# If it will be fast enough to scroll back next frame
 		# Apply a speed that will make it scroll back exactly
 		if will_stop_within(vertical, axis_velocity):
-			axis_velocity = -dist1*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
+			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
 		# Snap to boundary if close enough
-		if dist1 > -just_snap_under:
+		if dist == top_distance && dist < just_snap_under || dist == bottom_distance && dist > -just_snap_under:
 			axis_velocity = 0.0
-			axis_pos -= dist1
+			axis_pos -= dist
+		return [axis_velocity, axis_pos]
+
+	var result = [axis_velocity, axis_pos]
 	
-	if dist2 > 0 and not will_stop_within(vertical, axis_velocity):
-		# Apply bounce force
-		axis_velocity = lerp(axis_velocity, -dist2/8, damping)
-		# If it will be fast enough to scroll back next frame
-		# Apply a speed that will make it scroll back exactly
-		if will_stop_within(vertical, axis_velocity):
-			axis_velocity = -dist2*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
-		# Snap to boundary if close enough
-		if dist2 < just_snap_under:
-			axis_velocity = 0.0
-			axis_pos -= dist2
-	return [axis_velocity, axis_pos]
+	# Overdrag on top
+	if dist1 > 0 and not will_stop_within(vertical, axis_velocity):
+		result = calculate.call(dist1)
+	
+	# Overdrag on bottom
+	if dist2 < 0 and not will_stop_within(vertical, axis_velocity):
+		result = calculate.call(dist2)
+			
+			
+	return result
 
 # Returns true when scrollbar was dragged
 func handle_scrollbar_drag() -> bool:
@@ -279,7 +281,7 @@ func handle_content_dragging(relative : Vector2):
 	var y_delta = content_node.position.y - drag_start_pos.y
 	var x_delta = content_node.position.x - drag_start_pos.x
 
-	var calculate_velocity = func calculate_velocity(distance1: float, distance2: float, delta: float, relative: float) -> float:
+	var calculate_velocity = func(distance1: float, distance2: float, delta: float, relative: float) -> float:
 		var vel = relative
 		if distance1 > 0.0 and min(distance1, delta) > 0.0:
 			vel = relative / (1 + min(distance1, delta) * damping_drag)
