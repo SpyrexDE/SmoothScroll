@@ -67,6 +67,9 @@ var left_distance := 0.0
 var drag_start_pos := Vector2.ZERO
 
 
+####################
+##### Virtual functions
+
 func _ready() -> void:
 	get_v_scroll_bar().scrolling.connect(_on_VScrollBar_scrolling)
 	get_h_scroll_bar().scrolling.connect(_on_HScrollBar_scrolling)
@@ -91,40 +94,105 @@ func _process(delta: float) -> void:
 	get_h_scroll_bar().set_value_no_signal(-pos.x)
 	get_h_scroll_bar().queue_redraw()
 
-func calculate_distance():
-	bottom_distance = content_node.position.y + content_node.size.y - self.size.y
-	top_distance = content_node.position.y
-	right_distance = content_node.position.x + content_node.size.x - self.size.x
-	left_distance = content_node.position.x
-	if get_v_scroll_bar().visible:
-		right_distance += get_v_scroll_bar().size.x
-	if get_h_scroll_bar().visible:
-		bottom_distance += get_h_scroll_bar().size.y
+func _scrollbar_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
+		or event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_gui_input(event)
 
-func stop_frame(vel : float) -> float:
-	# How long it will take to stop scrolling
-	# 0.001 and 0.999 is to ensure that the denominator is not 0
-	var stop_frame = log(just_stop_under/(abs(vel)+0.001))/log(friction*0.999)
-	# Clamp and floor
-	stop_frame = floor(max(stop_frame, 0.0))
-	return stop_frame
+func _gui_input(event: InputEvent) -> void:
+	v_scrollbar_dragging = get_v_scroll_bar().has_focus()
+	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
+	
+	if event is InputEventMouseButton:
+		var scrolled = true
+		match event.button_index:
+			MOUSE_BUTTON_WHEEL_DOWN:
+				if event.pressed:
+					if event.shift_pressed:
+						velocity.x -= speed
+					else:
+						velocity.y -= speed
+			MOUSE_BUTTON_WHEEL_UP:
+				if event.pressed:
+					if event.shift_pressed:
+						velocity.x += speed
+					else:
+						velocity.y += speed
+			MOUSE_BUTTON_LEFT:
+				if enable_content_dragging_mouse:
+					if event.pressed:
+						content_dragging = true
+						friction = 0.0
+						drag_start_pos = content_node.position
+					else:
+						content_dragging = false
+						friction = friction_drag
+						damping = damping_drag
+			_:                  scrolled = false
+			
+		if scrolled: 
+			friction = friction_scroll
+			damping = damping_scroll
+	
+	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
+		if content_dragging:
+			handle_content_dragging(event.relative)
+	
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			content_dragging = true
+			friction = 0.0
+			drag_start_pos = content_node.position
+		else:
+			content_dragging = false
+			friction = friction_drag
+			damping = damping_drag
+	# Handle input
+	get_tree().get_root().set_input_as_handled()
 
-func will_stop_within(vertical : bool, vel : float) -> bool:
-	# Calculate stop frame
-	var stop_frame = stop_frame(vel)
-	# Distance it takes to stop scrolling
-	var stop_distance = vel*(1-pow(friction,stop_frame))/(1-friction)
-	# Position it will stop at
-	var stop_pos
-	if vertical:
-		stop_pos = pos.y + stop_distance
-	else:
-		stop_pos = pos.x + stop_distance
+# Scroll to new focused element
+func _on_focus_changed(control: Control) -> void:
+	var is_child := false
+	if content_node.is_ancestor_of(control):
+		is_child = true
+	if not is_child:
+		return
+	if not follow_focus_:
+		return
+	
+	var focus_size_x = control.size.x
+	var focus_size_y = control.size.y
+	var focus_left = control.global_position.x - self.global_position.x
+	var focus_right = focus_left + focus_size_x
+	var focus_top = control.global_position.y - self.global_position.y
+	var focus_bottom = focus_top + focus_size_y
+	
+	if focus_top < 0.0:
+		scroll_y_to(content_node.position.y - focus_top)
+	
+	if focus_bottom > self.size.y:
+		scroll_y_to(content_node.position.y - focus_bottom + self.size.y)
+	
+	if focus_left < 0.0:
+		scroll_x_to(content_node.position.x - focus_left)
+	
+	if focus_right > self.size.x:
+		scroll_x_to(content_node.position.x - focus_right + self.size.x)
 
-	var diff = self.size.y - content_node.size.y if vertical else self.size.x - content_node.size.x
+func _on_VScrollBar_scrolling() -> void:
+	v_scrollbar_dragging = true
 
-	# Whether content node will stop inside the container
-	return stop_pos <= 0.0 and stop_pos >= min(diff, 0.0)
+func _on_HScrollBar_scrolling() -> void:
+	h_scrollbar_dragging = true
+
+
+##### Virtual functions
+####################
+
+
+####################
+##### LOGIC
 
 func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 	# If no scroll needed, don't apply forces
@@ -204,63 +272,6 @@ func handle_scrollbar_drag() -> bool:
 		return true
 	return false
 
-func _scrollbar_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
-		or event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_gui_input(event)
-
-func _gui_input(event: InputEvent) -> void:
-	v_scrollbar_dragging = get_v_scroll_bar().has_focus()
-	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
-	
-	if event is InputEventMouseButton:
-		var scrolled = true
-		match event.button_index:
-			MOUSE_BUTTON_WHEEL_DOWN:
-				if event.pressed:
-					if event.shift_pressed:
-						velocity.x -= speed
-					else:
-						velocity.y -= speed
-			MOUSE_BUTTON_WHEEL_UP:
-				if event.pressed:
-					if event.shift_pressed:
-						velocity.x += speed
-					else:
-						velocity.y += speed
-			MOUSE_BUTTON_LEFT:
-				if enable_content_dragging_mouse:
-					if event.pressed:
-						content_dragging = true
-						friction = 0.0
-						drag_start_pos = content_node.position
-					else:
-						content_dragging = false
-						friction = friction_drag
-						damping = damping_drag
-			_:                  scrolled = false
-			
-		if scrolled: 
-			friction = friction_scroll
-			damping = damping_scroll
-	
-	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
-		if content_dragging:
-			handle_content_dragging(event.relative)
-	
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			content_dragging = true
-			friction = 0.0
-			drag_start_pos = content_node.position
-		else:
-			content_dragging = false
-			friction = friction_drag
-			damping = damping_drag
-	# Handle input
-	get_tree().get_root().set_input_as_handled()
-
 func handle_content_dragging(relative : Vector2):
 	var y_delta = content_node.position.y - drag_start_pos.y
 	var x_delta = content_node.position.x - drag_start_pos.x
@@ -276,40 +287,56 @@ func handle_content_dragging(relative : Vector2):
 	velocity.y = calculate_velocity.call(top_distance, bottom_distance, y_delta, relative.y)
 	velocity.x = calculate_velocity.call(left_distance, right_distance, x_delta, relative.x)
 
-# Scroll to new focused element
-func _on_focus_changed(control: Control) -> void:
-	var is_child := false
-	if content_node.is_ancestor_of(control):
-		is_child = true
-	if not is_child:
-		return
-	if not follow_focus_:
-		return
-	
-	var focus_size_x = control.size.x
-	var focus_size_y = control.size.y
-	var focus_left = control.global_position.x - self.global_position.x
-	var focus_right = focus_left + focus_size_x
-	var focus_top = control.global_position.y - self.global_position.y
-	var focus_bottom = focus_top + focus_size_y
-	
-	if focus_top < 0.0:
-		scroll_y_to(content_node.position.y - focus_top)
-	
-	if focus_bottom > self.size.y:
-		scroll_y_to(content_node.position.y - focus_bottom + self.size.y)
-	
-	if focus_left < 0.0:
-		scroll_x_to(content_node.position.x - focus_left)
-	
-	if focus_right > self.size.x:
-		scroll_x_to(content_node.position.x - focus_right + self.size.x)
+func calculate_distance():
+	bottom_distance = content_node.position.y + content_node.size.y - self.size.y
+	top_distance = content_node.position.y
+	right_distance = content_node.position.x + content_node.size.x - self.size.x
+	left_distance = content_node.position.x
+	if get_v_scroll_bar().visible:
+		right_distance += get_v_scroll_bar().size.x
+	if get_h_scroll_bar().visible:
+		bottom_distance += get_h_scroll_bar().size.y
 
-func _on_VScrollBar_scrolling() -> void:
-	v_scrollbar_dragging = true
+func stop_frame(vel : float) -> float:
+	# How long it will take to stop scrolling
+	# 0.001 and 0.999 is to ensure that the denominator is not 0
+	var stop_frame = log(just_stop_under/(abs(vel)+0.001))/log(friction*0.999)
+	# Clamp and floor
+	stop_frame = floor(max(stop_frame, 0.0))
+	return stop_frame
 
-func _on_HScrollBar_scrolling() -> void:
-	h_scrollbar_dragging = true
+func will_stop_within(vertical : bool, vel : float) -> bool:
+	# Calculate stop frame
+	var stop_frame = stop_frame(vel)
+	# Distance it takes to stop scrolling
+	var stop_distance = vel*(1-pow(friction,stop_frame))/(1-friction)
+	# Position it will stop at
+	var stop_pos
+	if vertical:
+		stop_pos = pos.y + stop_distance
+	else:
+		stop_pos = pos.x + stop_distance
+
+	var diff = self.size.y - content_node.size.y if vertical else self.size.x - content_node.size.x
+
+	# Whether content node will stop inside the container
+	return stop_pos <= 0.0 and stop_pos >= min(diff, 0.0)
+
+# Needed to receive touch inputs
+func remove_mouse_filter(node):
+	node.mouse_filter = Control.MOUSE_FILTER_PASS
+	for N in node.get_children():
+		if N.get_child_count() > 0:
+			N.mouse_filter = Control.MOUSE_FILTER_PASS
+			remove_mouse_filter(N)
+		else:
+			N.mouse_filter = Control.MOUSE_FILTER_PASS
+
+##### LOGIC
+####################
+
+####################
+##### API FUNCTIONS
 
 # Scrolls to specific x position
 func scroll_x_to(x_pos: float, duration:float=0.5) -> void:
@@ -373,6 +400,7 @@ func scroll_to_left(duration:float=0.5) -> void:
 func scroll_to_right(duration:float=0.5) -> void:
 	scroll_x_to(self.size.x - content_node.size.x, duration)
 
+# Returns true if any scroll bar is being dragged
 func any_scroll_bar_dragged() -> bool:
 	if get_v_scroll_bar():
 		return get_v_scroll_bar().has_focus()
@@ -380,6 +408,7 @@ func any_scroll_bar_dragged() -> bool:
 		return get_h_scroll_bar().has_focus()
 	return false
 
+# Returns true if there is enough content height to scroll
 func should_scroll_vertical() -> bool:
 	if content_node.size.y - self.size.y < 1:
 		return false
@@ -387,6 +416,7 @@ func should_scroll_vertical() -> bool:
 		velocity.y = 0.0
 	return allow_vertical_scroll
 
+# Returns true if there is enough content width to scroll
 func should_scroll_horizontal() -> bool:
 	if content_node.size.x - self.size.x < 1:
 		return false
@@ -394,12 +424,5 @@ func should_scroll_horizontal() -> bool:
 		velocity.x = 0.0
 	return allow_horizontal_scroll
 
-# Needed to receive touch inputs
-func remove_mouse_filter(node):
-	node.mouse_filter = Control.MOUSE_FILTER_PASS
-	for N in node.get_children():
-		if N.get_child_count() > 0:
-			N.mouse_filter = Control.MOUSE_FILTER_PASS
-			remove_mouse_filter(N)
-		else:
-			N.mouse_filter = Control.MOUSE_FILTER_PASS
+##### API FUNCTIONS
+########################
