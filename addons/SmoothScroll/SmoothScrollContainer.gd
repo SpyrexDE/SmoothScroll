@@ -16,6 +16,9 @@ var damping_drag := 0.1
 # Scrolls to currently focused child element
 @export
 var follow_focus_ := true
+# Margin of the currently focused element
+@export_range(0, 50)
+var follow_focus_margin := 20
 # Makes the container scrollable vertically
 @export
 var allow_vertical_scroll := true
@@ -169,16 +172,16 @@ func _on_focus_changed(control: Control) -> void:
 	var focus_bottom = focus_top + focus_size_y
 	
 	if focus_top < 0.0:
-		scroll_y_to(content_node.position.y - focus_top)
+		scroll_y_to(content_node.position.y - focus_top + follow_focus_margin)
 	
 	if focus_bottom > self.size.y:
-		scroll_y_to(content_node.position.y - focus_bottom + self.size.y)
+		scroll_y_to(content_node.position.y - focus_bottom + self.size.y - follow_focus_margin)
 	
 	if focus_left < 0.0:
-		scroll_x_to(content_node.position.x - focus_left)
+		scroll_x_to(content_node.position.x - focus_left + follow_focus_margin)
 	
 	if focus_right > self.size.x:
-		scroll_x_to(content_node.position.x - focus_right + self.size.x)
+		scroll_x_to(content_node.position.x - focus_right + self.size.x - follow_focus_margin)
 
 func _on_VScrollBar_scrolling() -> void:
 	v_scrollbar_dragging = true
