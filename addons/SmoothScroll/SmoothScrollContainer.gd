@@ -37,6 +37,9 @@ var friction_scroll := 0.9
 # Friction when using touch
 @export_range(0, 1)
 var friction_drag := 0.9
+# Adds debug information
+@export
+var debug_mode := false
 
 # Current velocity of the `content_node`
 var velocity := Vector2(0,0)
@@ -74,6 +77,9 @@ var drag_start_pos := Vector2.ZERO
 ##### Virtual functions
 
 func _ready() -> void:
+	if debug_mode:
+		setup_debug_drawing()
+
 	get_v_scroll_bar().scrolling.connect(_on_VScrollBar_scrolling)
 	get_h_scroll_bar().scrolling.connect(_on_HScrollBar_scrolling)
 	get_v_scroll_bar().gui_input.connect(_scrollbar_input)
@@ -96,6 +102,9 @@ func _process(delta: float) -> void:
 	# Update horizontal scroll bar
 	get_h_scroll_bar().set_value_no_signal(-pos.x)
 	get_h_scroll_bar().queue_redraw()
+
+	if debug_mode:
+		queue_redraw()
 
 func _scrollbar_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -189,6 +198,9 @@ func _on_VScrollBar_scrolling() -> void:
 func _on_HScrollBar_scrolling() -> void:
 	h_scrollbar_dragging = true
 
+func _draw() -> void:
+	if debug_mode:
+		draw_debug()
 
 ##### Virtual functions
 ####################
@@ -338,6 +350,34 @@ func remove_mouse_filter(node):
 
 ##### LOGIC
 ####################
+
+
+####################
+##### DEBUG DRAWING
+
+var debug_gradient = Gradient.new()
+
+func setup_debug_drawing() -> void:
+	debug_gradient.set_color(0.0, Color.GREEN)
+	debug_gradient.set_color(1.0, Color.RED)
+
+func draw_debug() -> void:
+	# Overdrag lines
+	# Top + Bottom
+	draw_line(Vector2(0.0, 0.0), Vector2(0.0, top_distance), debug_gradient.sample(clamp(top_distance / size.y, 0.0, 1.0)), 5.0)
+	draw_line(Vector2(0.0, size.y), Vector2(0.0, size.y+bottom_distance), debug_gradient.sample(clamp(-bottom_distance / size.y, 0.0, 1.0)), 5.0)
+	# Left + Right
+	draw_line(Vector2(0.0, size.y), Vector2(left_distance, size.y), debug_gradient.sample(clamp(left_distance / size.y, 0.0, 1.0)), 5.0)
+	draw_line(Vector2(size.x, size.y), Vector2(size.x+right_distance, size.y), debug_gradient.sample(clamp(-right_distance / size.y, 0.0, 1.0)), 5.0)
+
+	# Velocity lines
+	var origin := Vector2(5.0, size.y/2)
+	draw_line(origin, origin + Vector2(0.0, velocity.y), debug_gradient.sample(clamp(velocity.y*2 / size.y, 0.0, 1.0)), 5.0)
+	draw_line(origin, origin + Vector2(0.0, velocity.x), debug_gradient.sample(clamp(velocity.x*2 / size.x, 0.0, 1.0)), 5.0)
+
+##### DEBUG DRAWING
+####################
+
 
 ####################
 ##### API FUNCTIONS
