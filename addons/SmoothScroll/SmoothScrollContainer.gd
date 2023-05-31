@@ -149,6 +149,7 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
 		if content_dragging:
+			remove_all_children_focus(self)
 			handle_content_dragging(event.relative)
 	
 	if event is InputEventScreenTouch:
@@ -339,7 +340,7 @@ func will_stop_within(vertical : bool, vel : float) -> bool:
 	return stop_pos <= 0.0 and stop_pos >= min(diff, 0.0)
 
 # Needed to receive touch inputs
-func remove_mouse_filter(node):
+func remove_mouse_filter(node : Node):
 	node.mouse_filter = Control.MOUSE_FILTER_PASS
 	for N in node.get_children():
 		if N.get_child_count() > 0:
@@ -347,6 +348,14 @@ func remove_mouse_filter(node):
 			remove_mouse_filter(N)
 		else:
 			N.mouse_filter = Control.MOUSE_FILTER_PASS
+
+func remove_all_children_focus(node : Node):
+	if node is Control:
+		var control = node as Control
+		control.release_focus()
+	
+	for child in node.get_children():
+		remove_all_children_focus(child)
 
 ##### LOGIC
 ####################
