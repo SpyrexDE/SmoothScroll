@@ -125,12 +125,16 @@ func _gui_input(event: InputEvent) -> void:
 						velocity.x -= speed
 					else:
 						velocity.y -= speed
+					friction = friction_scroll
+					damping = damping_scroll
 			MOUSE_BUTTON_WHEEL_UP:
 				if event.pressed:
 					if event.shift_pressed:
 						velocity.x += speed
 					else:
 						velocity.y += speed
+					friction = friction_scroll
+					damping = damping_scroll
 			MOUSE_BUTTON_LEFT:
 				if enable_content_dragging_mouse:
 					if event.pressed:
@@ -141,11 +145,6 @@ func _gui_input(event: InputEvent) -> void:
 						content_dragging = false
 						friction = friction_drag
 						damping = damping_drag
-			_:                  scrolled = false
-			
-		if scrolled: 
-			friction = friction_scroll
-			damping = damping_scroll
 	
 	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
 		if content_dragging:
