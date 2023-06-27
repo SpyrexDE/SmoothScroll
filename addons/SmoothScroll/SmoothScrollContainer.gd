@@ -117,7 +117,6 @@ func _gui_input(event: InputEvent) -> void:
 	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
 	
 	if event is InputEventMouseButton:
-		var scrolled = true
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:
 				if event.pressed:
@@ -125,12 +124,16 @@ func _gui_input(event: InputEvent) -> void:
 						velocity.x -= speed
 					else:
 						velocity.y -= speed
+					friction = friction_scroll
+					damping = damping_scroll
 			MOUSE_BUTTON_WHEEL_UP:
 				if event.pressed:
 					if event.shift_pressed:
 						velocity.x += speed
 					else:
 						velocity.y += speed
+					friction = friction_scroll
+					damping = damping_scroll
 			MOUSE_BUTTON_LEFT:
 				if enable_content_dragging_mouse:
 					if event.pressed:
@@ -141,26 +144,23 @@ func _gui_input(event: InputEvent) -> void:
 						content_dragging = false
 						friction = friction_drag
 						damping = damping_drag
-			_:                  scrolled = false
-			
-		if scrolled: 
-			friction = friction_scroll
-			damping = damping_scroll
 	
-	if event is InputEventScreenDrag or event is InputEventMouseMotion and enable_content_dragging_mouse:
+	if (event is InputEventScreenDrag and enable_content_dragging_touch) or\
+		(event is InputEventMouseMotion and enable_content_dragging_mouse):
 		if content_dragging:
 			remove_all_children_focus(self)
 			handle_content_dragging(event.relative)
 	
 	if event is InputEventScreenTouch:
-		if event.pressed:
-			content_dragging = true
-			friction = 0.0
-			drag_start_pos = content_node.position
-		else:
-			content_dragging = false
-			friction = friction_drag
-			damping = damping_drag
+		if enable_content_dragging_touch:
+			if event.pressed:
+				content_dragging = true
+				friction = 0.0
+				drag_start_pos = content_node.position
+			else:
+				content_dragging = false
+				friction = friction_drag
+				damping = damping_drag
 	# Handle input
 	get_tree().get_root().set_input_as_handled()
 
