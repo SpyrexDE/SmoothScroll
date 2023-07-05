@@ -50,6 +50,7 @@ custom_minimum_size = Vector2(2.08165e-12, 943)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+mouse_filter = 1
 
 [node name="RichTextLabel" type="RichTextLabel" parent="SmoothScrollContainer/Control"]
 layout_mode = 0
@@ -57,6 +58,7 @@ offset_right = 390.0
 offset_bottom = 246.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
+mouse_filter = 1
 text = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime mollitia,
 molestiae quas vel sint commodi repudiandae consequuntur voluptatum laborum
 numquam blanditiis harum quisquam eius sed odit fugiat iusto fuga praesentium

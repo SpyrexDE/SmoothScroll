@@ -2,6 +2,7 @@
 ##
 ## Applies velocity based momentum and "overdrag"
 ## functionality to a ScrollContainer
+@tool
 extends ScrollContainer
 
 # Drag impact for one scroll input
@@ -25,12 +26,6 @@ var allow_vertical_scroll := true
 # Makes the container scrollable horizontally
 @export
 var allow_horizontal_scroll := true
-# Enables dragging content using touch input
-@export
-var enable_content_dragging_touch := true
-# Enables dragging content using mouse input
-@export
-var enable_content_dragging_mouse := true
 # Friction when using mouse wheel
 @export_range(0, 1)
 var friction_scroll := 0.9
@@ -89,10 +84,10 @@ func _ready() -> void:
 		if not c is ScrollBar:
 			content_node = c
 	
-	if enable_content_dragging_touch or enable_content_dragging_mouse:
-		remove_mouse_filter(content_node)
+	get_tree().node_added.connect(_on_node_added)
 
 func _process(delta: float) -> void:
+	if Engine.is_editor_hint(): return
 	calculate_distance()
 	scroll(true, velocity.y, pos.y)
 	scroll(false, velocity.x, pos.x)
@@ -135,32 +130,29 @@ func _gui_input(event: InputEvent) -> void:
 					friction = friction_scroll
 					damping = damping_scroll
 			MOUSE_BUTTON_LEFT:
-				if enable_content_dragging_mouse:
-					if event.pressed:
-						content_dragging = true
-						friction = 0.0
-						drag_start_pos = content_node.position
-					else:
-						content_dragging = false
-						friction = friction_drag
-						damping = damping_drag
+				if event.pressed:
+					content_dragging = true
+					friction = 0.0
+					drag_start_pos = content_node.position
+				else:
+					content_dragging = false
+					friction = friction_drag
+					damping = damping_drag
 	
-	if (event is InputEventScreenDrag and enable_content_dragging_touch) or\
-		(event is InputEventMouseMotion and enable_content_dragging_mouse):
+	if event is InputEventScreenDrag or event is InputEventMouseMotion:
 		if content_dragging:
 			remove_all_children_focus(self)
 			handle_content_dragging(event.relative)
 	
 	if event is InputEventScreenTouch:
-		if enable_content_dragging_touch:
-			if event.pressed:
-				content_dragging = true
-				friction = 0.0
-				drag_start_pos = content_node.position
-			else:
-				content_dragging = false
-				friction = friction_drag
-				damping = damping_drag
+		if event.pressed:
+			content_dragging = true
+			friction = 0.0
+			drag_start_pos = content_node.position
+		else:
+			content_dragging = false
+			friction = friction_drag
+			damping = damping_drag
 	# Handle input
 	get_tree().get_root().set_input_as_handled()
 
@@ -202,6 +194,12 @@ func _on_HScrollBar_scrolling() -> void:
 func _draw() -> void:
 	if debug_mode:
 		draw_debug()
+
+# Sets default mouse filter for SmoothScroll children to MOUSE_FILTER_PASS
+func _on_node_added(node):
+	if node is Control and Engine.is_editor_hint():
+		if is_ancestor_of(node):
+			node.mouse_filter = Control.MOUSE_FILTER_PASS
 
 ##### Virtual functions
 ####################
@@ -338,16 +336,6 @@ func will_stop_within(vertical : bool, vel : float) -> bool:
 
 	# Whether content node will stop inside the container
 	return stop_pos <= 0.0 and stop_pos >= min(diff, 0.0)
-
-# Needed to receive touch inputs
-func remove_mouse_filter(node : Node):
-	node.mouse_filter = Control.MOUSE_FILTER_PASS
-	for N in node.get_children():
-		if N.get_child_count() > 0:
-			N.mouse_filter = Control.MOUSE_FILTER_PASS
-			remove_mouse_filter(N)
-		else:
-			N.mouse_filter = Control.MOUSE_FILTER_PASS
 
 func remove_all_children_focus(node : Node):
 	if node is Control:
