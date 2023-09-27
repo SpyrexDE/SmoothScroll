@@ -66,6 +66,8 @@ var right_distance := 0.0
 var left_distance := 0.0
 # Content node position where dragging starts
 var drag_start_pos := Vector2.ZERO
+# Bool used to track when to emit scrolling signals
+var was_scrolling := false
 
 
 ####################
@@ -100,6 +102,24 @@ func _process(delta: float) -> void:
 
 	if debug_mode:
 		queue_redraw()
+
+	emit_signals(lastPos == pos)
+
+func emit_signals(posUnchanged: bool) -> void:
+	# check if should scroll_ended.emit()
+	if content_dragging || h_scrollbar_dragging || v_scrollbar_dragging:
+		if !was_scrolling:
+			was_scrolling = true
+			scroll_started.emit()
+	else:
+		if posUnchanged:
+			if was_scrolling:
+				was_scrolling = false
+				scroll_ended.emit()
+		else:
+			if !was_scrolling:
+				was_scrolling = true
+				scroll_started.emit()
 
 func _scrollbar_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
