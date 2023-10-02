@@ -26,6 +26,9 @@ var allow_vertical_scroll := true
 # Makes the container scrollable horizontally
 @export
 var allow_horizontal_scroll := true
+# Makes the container only scrollable where the content has overflow
+@export
+var auto_allow_scroll := true
 # Friction when using mouse wheel
 @export_range(0, 1)
 var friction_scroll := 0.9
@@ -66,7 +69,17 @@ var right_distance := 0.0
 var left_distance := 0.0
 # Content node position where dragging starts
 var drag_start_pos := Vector2.ZERO
-
+# If content is being scrolled
+var is_scrolling := false:
+	set(val):
+		is_scrolling = val
+		if is_scrolling:
+			emit_signal("scroll_started")
+		else:
+			emit_signal("scroll_ended")
+# Last type of input used to scroll
+enum SCROLL_TYPE {WHEEL, BAR, DRAG}
+var last_scroll_type : SCROLL_TYPE
 
 ####################
 ##### Virtual functions
@@ -97,24 +110,30 @@ func _process(delta: float) -> void:
 	# Update horizontal scroll bar
 	get_h_scroll_bar().set_value_no_signal(-pos.x)
 	get_h_scroll_bar().queue_redraw()
+	# Update state
+	update_state()
 
 	if debug_mode:
 		queue_redraw()
 
+# Forwarding scroll inputs from scrollbar
 func _scrollbar_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
-		or event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		or event.button_index == MOUSE_BUTTON_WHEEL_UP\
+		or event.button_index == MOUSE_BUTTON_WHEEL_LEFT\
+		or event.button_index == MOUSE_BUTTON_WHEEL_RIGHT:
 			_gui_input(event)
 
 func _gui_input(event: InputEvent) -> void:
-	v_scrollbar_dragging = get_v_scroll_bar().has_focus()
+	v_scrollbar_dragging = get_v_scroll_bar().has_focus() # != pressed => TODO
 	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
 	
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:
-				if event.pressed:
+				if event.pressed && allow_vertical_scroll:
+					last_scroll_type = SCROLL_TYPE.WHEEL
 					if event.shift_pressed:
 						velocity.x -= speed
 					else:
@@ -122,16 +141,36 @@ func _gui_input(event: InputEvent) -> void:
 					friction = friction_scroll
 					damping = damping_scroll
 			MOUSE_BUTTON_WHEEL_UP:
-				if event.pressed:
+				if event.pressed && allow_vertical_scroll:
+					last_scroll_type = SCROLL_TYPE.WHEEL
 					if event.shift_pressed:
 						velocity.x += speed
 					else:
 						velocity.y += speed
 					friction = friction_scroll
 					damping = damping_scroll
+			MOUSE_BUTTON_WHEEL_LEFT:
+				if event.pressed && allow_horizontal_scroll:
+					last_scroll_type = SCROLL_TYPE.WHEEL
+					if event.shift_pressed:
+						velocity.y -= speed
+					else:
+						velocity.x += speed
+					friction = friction_scroll
+					damping = damping_scroll
+			MOUSE_BUTTON_WHEEL_RIGHT:
+				if event.pressed && allow_horizontal_scroll:
+					last_scroll_type = SCROLL_TYPE.WHEEL
+					if event.shift_pressed:
+						velocity.y += speed
+					else:
+						velocity.x -= speed
+					friction = friction_scroll
+					damping = damping_scroll
 			MOUSE_BUTTON_LEFT:
 				if event.pressed:
 					content_dragging = true
+					last_scroll_type = SCROLL_TYPE.DRAG
 					friction = 0.0
 					drag_start_pos = content_node.position
 				else:
@@ -141,12 +180,14 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenDrag or event is InputEventMouseMotion:
 		if content_dragging:
+			is_scrolling = true
 			remove_all_children_focus(self)
 			handle_content_dragging(event.relative)
 	
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			content_dragging = true
+			last_scroll_type = SCROLL_TYPE.DRAG
 			friction = 0.0
 			drag_start_pos = content_node.position
 		else:
@@ -187,9 +228,11 @@ func _on_focus_changed(control: Control) -> void:
 
 func _on_VScrollBar_scrolling() -> void:
 	v_scrollbar_dragging = true
+	last_scroll_type = SCROLL_TYPE.BAR
 
 func _on_HScrollBar_scrolling() -> void:
 	h_scrollbar_dragging = true
+	last_scroll_type = SCROLL_TYPE.BAR
 
 func _draw() -> void:
 	if debug_mode:
@@ -210,12 +253,13 @@ func _on_node_added(node):
 
 func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 	# If no scroll needed, don't apply forces
-	if vertical:
-		if not should_scroll_vertical():
-			return
-	else:
-		if not should_scroll_horizontal():
-			return
+	if auto_allow_scroll:
+		if vertical:
+			if not should_scroll_vertical():
+				return
+		else:
+			if not should_scroll_horizontal():
+				return
 	
 	# If velocity is too low, just set it to 0
 	if abs(axis_velocity) <= just_stop_under:
@@ -299,8 +343,8 @@ func handle_content_dragging(relative : Vector2):
 			vel = relative / (1 - max(distance2, delta) * damping_drag)
 		return vel
 	
-	velocity.y = calculate_velocity.call(top_distance, bottom_distance, y_delta, relative.y)
-	velocity.x = calculate_velocity.call(left_distance, right_distance, x_delta, relative.x)
+	if allow_vertical_scroll: velocity.y = calculate_velocity.call(top_distance, bottom_distance, y_delta, relative.y)
+	if allow_horizontal_scroll: velocity.x = calculate_velocity.call(left_distance, right_distance, x_delta, relative.x)
 
 func calculate_distance():
 	bottom_distance = content_node.position.y + content_node.size.y - self.size.y
@@ -344,6 +388,15 @@ func remove_all_children_focus(node : Node):
 	
 	for child in node.get_children():
 		remove_all_children_focus(child)
+
+func update_state():
+	if content_dragging\
+	or v_scrollbar_dragging\
+	or h_scrollbar_dragging\
+	or velocity != Vector2.ZERO:
+		is_scrolling = true
+	else:
+		is_scrolling = false
 
 ##### LOGIC
 ####################
