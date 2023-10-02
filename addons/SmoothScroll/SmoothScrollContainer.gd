@@ -5,37 +5,37 @@
 @tool
 extends ScrollContainer
 
-# Drag impact for one scroll input
+## Drag impact for one scroll input
 @export_range(0, 10, 0.01, "or_greater")
 var speed := 5.0
-# Softness of damping when "overdragging" with wheel button
+## Softness of damping when "overdragging" with wheel button
 @export_range(0, 1)
 var damping_scroll := 0.1
-# Softness of damping when "overdragging" with dragging
+## Softness of damping when "overdragging" with dragging
 @export_range(0, 1)
 var damping_drag := 0.1
-# Scrolls to currently focused child element
+## Scrolls to currently focused child element
 @export
 var follow_focus_ := true
-# Margin of the currently focused element
+## Margin of the currently focused element
 @export_range(0, 50)
 var follow_focus_margin := 20
-# Makes the container scrollable vertically
+## Makes the container scrollable vertically
 @export
 var allow_vertical_scroll := true
-# Makes the container scrollable horizontally
+## Makes the container scrollable horizontally
 @export
 var allow_horizontal_scroll := true
-# Makes the container only scrollable where the content has overflow
+## Makes the container only scrollable where the content has overflow
 @export
 var auto_allow_scroll := true
-# Friction when using mouse wheel
+## Friction when using mouse wheel
 @export_range(0, 1)
 var friction_scroll := 0.9
-# Friction when using touch
+## Friction when using touch
 @export_range(0, 1)
 var friction_drag := 0.9
-# Adds debug information
+## Adds debug information
 @export
 var debug_mode := false
 
