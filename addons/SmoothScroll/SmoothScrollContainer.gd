@@ -69,6 +69,9 @@ var right_distance := 0.0
 var left_distance := 0.0
 # Content node position where dragging starts
 var drag_start_pos := Vector2.ZERO
+# [0,1] Mouse or touch's relative movement accumulation when overdrag
+# [2,3,4,5] Top_distance, bottom_distance, left_distance, right_distance
+var drag_temp_data := []
 # If content is being scrolled
 var is_scrolling := false:
 	set(val):
@@ -173,6 +176,7 @@ func _gui_input(event: InputEvent) -> void:
 					last_scroll_type = SCROLL_TYPE.DRAG
 					friction = 0.0
 					drag_start_pos = content_node.position
+					init_drag_temp_data()
 				else:
 					content_dragging = false
 					friction = friction_drag
@@ -181,8 +185,10 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag or event is InputEventMouseMotion:
 		if content_dragging:
 			is_scrolling = true
+			drag_temp_data[0] += event.relative.x
+			drag_temp_data[1] += event.relative.y
 			remove_all_children_focus(self)
-			handle_content_dragging(event.relative)
+			handle_content_dragging()
 	
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -190,6 +196,7 @@ func _gui_input(event: InputEvent) -> void:
 			last_scroll_type = SCROLL_TYPE.DRAG
 			friction = 0.0
 			drag_start_pos = content_node.position
+			init_drag_temp_data()
 		else:
 			content_dragging = false
 			friction = friction_drag
@@ -270,14 +277,14 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 		var result = handle_overdrag(vertical, axis_velocity, axis_pos)
 		axis_velocity = result[0]
 		axis_pos = result[1]
+		# Move content node by applying velocity
+		axis_pos += axis_velocity
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
 	if handle_scrollbar_drag():
 		return
 	
-	# Move content node by applying velocity
-	axis_pos += axis_velocity
 	if vertical:
 		content_node.position.y = axis_pos
 		pos.y = axis_pos
@@ -331,20 +338,51 @@ func handle_scrollbar_drag() -> bool:
 		return true
 	return false
 
-func handle_content_dragging(relative : Vector2):
-	var y_delta = content_node.position.y - drag_start_pos.y
-	var x_delta = content_node.position.x - drag_start_pos.x
-
-	var calculate_velocity = func(distance1: float, distance2: float, delta: float, relative: float) -> float:
-		var vel = relative
-		if distance1 > 0.0 and min(distance1, delta) > 0.0:
-			vel = relative / (1 + min(distance1, delta) * damping_drag)
-		elif distance2 < 0.0 and max(distance2, delta) < 0.0:
-			vel = relative / (1 - max(distance2, delta) * damping_drag)
-		return vel
+func handle_content_dragging():
+	var calculate_dest = func(delta: float, damping: float) -> float:
+		var a = (1 - damping * 0.5)
+		if delta >= 0.0:
+			return pow(delta + pow(a, 1/(1-a)), a) - pow(pow(a, 1/1-a), a)
+		else:
+			return delta
 	
-	if allow_vertical_scroll: velocity.y = calculate_velocity.call(top_distance, bottom_distance, y_delta, relative.y)
-	if allow_horizontal_scroll: velocity.x = calculate_velocity.call(left_distance, right_distance, x_delta, relative.x)
+	var calculate_position = func(
+		distance1: float,		# Realtime distance
+		distance2: float,
+		temp_dist1: float,		# Temp distance
+		temp_dist2: float,
+		temp_relative: float	# Event's relative movement accumulation
+	) -> float:
+		if distance1 > 0.0:
+			var delta = min(temp_relative, temp_relative + temp_dist1)
+			var dest = calculate_dest.call(delta, damping_drag)
+			return dest - min(0.0, temp_dist1)
+		elif distance2 < 0.0:
+			var delta = max(temp_relative, temp_relative + temp_dist2)
+			var dest = -calculate_dest.call(-delta, damping_drag)
+			return dest - max(0.0, temp_dist2)
+		else: return temp_relative
+	
+	if allow_vertical_scroll:
+		var y_pos = calculate_position.call(
+			top_distance,
+			bottom_distance,
+			drag_temp_data[2],	# Temp top_distance
+			drag_temp_data[3],	# Temp bottom_distance
+			drag_temp_data[1]	# Temp y relative accumulation
+		) + drag_start_pos.y
+		velocity.y = y_pos - pos.y
+		pos.y = y_pos
+	if allow_horizontal_scroll:
+		var x_pos = calculate_position.call(
+			left_distance,
+			right_distance,
+			drag_temp_data[4],	# Temp left_distance
+			drag_temp_data[5],	# Temp right_distance
+			drag_temp_data[0]	# Temp x relative accumulation
+		) + drag_start_pos.x
+		velocity.x = x_pos - pos.x
+		pos.x = x_pos
 
 func calculate_distance():
 	bottom_distance = content_node.position.y + content_node.size.y - self.size.y
@@ -397,6 +435,9 @@ func update_state():
 		is_scrolling = true
 	else:
 		is_scrolling = false
+
+func init_drag_temp_data():
+	drag_temp_data = [0.0, 0.0, top_distance, bottom_distance, left_distance, right_distance]
 
 ##### LOGIC
 ####################
