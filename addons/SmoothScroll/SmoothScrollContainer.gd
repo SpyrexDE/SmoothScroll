@@ -340,7 +340,7 @@ func handle_scrollbar_drag() -> bool:
 
 func handle_content_dragging():
 	var calculate_dest = func(delta: float, damping: float) -> float:
-		var a = (1 - damping * 0.5)
+		var a = (1 - damping * 0.5 - 0.1)
 		if delta >= 0.0:
 			return pow(delta + pow(a, 1/(1-a)), a) - pow(pow(a, 1/1-a), a)
 		else:
