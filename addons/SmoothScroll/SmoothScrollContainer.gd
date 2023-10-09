@@ -105,8 +105,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint(): return
 	calculate_distance()
-	scroll(true, velocity.y, pos.y)
-	scroll(false, velocity.x, pos.x)
+	scroll(true, velocity.y, pos.y, delta)
+	scroll(false, velocity.x, pos.x, delta)
 	# Update vertical scroll bar
 	get_v_scroll_bar().set_value_no_signal(-pos.y)
 	get_v_scroll_bar().queue_redraw()
@@ -258,7 +258,7 @@ func _on_node_added(node):
 ####################
 ##### LOGIC
 
-func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
+func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : float):
 	# If no scroll needed, don't apply forces
 	if auto_allow_scroll:
 		if vertical:
@@ -278,7 +278,8 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 		axis_velocity = result[0]
 		axis_pos = result[1]
 		# Move content node by applying velocity
-		axis_pos += axis_velocity
+		axis_pos += axis_velocity * (pow(friction, delta*100) - 1) / log(friction)
+		axis_velocity *= pow(friction, delta*100)
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
@@ -288,11 +289,11 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
 	if vertical:
 		content_node.position.y = axis_pos
 		pos.y = axis_pos
-		velocity.y = axis_velocity * friction
+		velocity.y = axis_velocity
 	else:
 		content_node.position.x = axis_pos
 		pos.x = axis_pos
-		velocity.x = axis_velocity * friction
+		velocity.x = axis_velocity
 
 func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -> Array:
 	# Left/Right or Top/Bottom depending on x or y
@@ -301,7 +302,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 	
 	var calculate = func(dist):
 		# Apply bounce force
-		axis_velocity = lerp(axis_velocity, -dist/8, damping)
+		axis_velocity = lerp(axis_velocity, -dist/8*get_process_delta_time()*100, damping)
 		# If it will be fast enough to scroll back next frame
 		# Apply a speed that will make it scroll back exactly
 		if will_stop_within(vertical, axis_velocity):
@@ -371,7 +372,7 @@ func handle_content_dragging():
 			drag_temp_data[3],	# Temp bottom_distance
 			drag_temp_data[1]	# Temp y relative accumulation
 		) + drag_start_pos.y
-		velocity.y = y_pos - pos.y
+		velocity.y = (y_pos - pos.y) / get_process_delta_time() / 100
 		pos.y = y_pos
 	if allow_horizontal_scroll:
 		var x_pos = calculate_position.call(
@@ -381,7 +382,7 @@ func handle_content_dragging():
 			drag_temp_data[5],	# Temp right_distance
 			drag_temp_data[0]	# Temp x relative accumulation
 		) + drag_start_pos.x
-		velocity.x = x_pos - pos.x
+		velocity.x = (x_pos - pos.x) / get_process_delta_time() / 100
 		pos.x = x_pos
 
 func calculate_distance():
