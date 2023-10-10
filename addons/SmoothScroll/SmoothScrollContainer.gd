@@ -35,6 +35,18 @@ var friction_scroll := 0.9
 ## Friction when using touch
 @export_range(0, 1)
 var friction_drag := 0.9
+## Hides scrollbar as long as not hovered or interacted with
+@export
+var hide_scrollbar_over_time:= false
+## Time after scrollbar starts to fade out when 'hide_scrollbar_over_time' is true
+@export
+var scrollbar_hide_time := 5
+## Fadein time for scrollbar when 'hide_scrollbar_over_time' is true
+@export
+var scrollbar_fade_in_time := 0.2
+## Fadeout time for scrollbar when 'hide_scrollbar_over_time' is true
+@export
+var scrollbar_fade_out_time := 0.5
 ## Adds debug information
 @export
 var debug_mode := false
@@ -69,9 +81,12 @@ var right_distance := 0.0
 var left_distance := 0.0
 # Content node position where dragging starts
 var drag_start_pos := Vector2.ZERO
+# Timer for hiding scroll bar
+var scrollbar_hide_timer := Timer.new()
 # [0,1] Mouse or touch's relative movement accumulation when overdrag
 # [2,3,4,5] Top_distance, bottom_distance, left_distance, right_distance
 var drag_temp_data := []
+
 # If content is being scrolled
 var is_scrolling := false:
 	set(val):
@@ -80,6 +95,7 @@ var is_scrolling := false:
 			emit_signal("scroll_started")
 		else:
 			emit_signal("scroll_ended")
+
 # Last type of input used to scroll
 enum SCROLL_TYPE {WHEEL, BAR, DRAG}
 var last_scroll_type : SCROLL_TYPE
@@ -96,10 +112,13 @@ func _ready() -> void:
 	get_v_scroll_bar().gui_input.connect(_scrollbar_input)
 	get_h_scroll_bar().gui_input.connect(_scrollbar_input)
 	get_viewport().gui_focus_changed.connect(_on_focus_changed)
+
 	for c in get_children():
 		if not c is ScrollBar:
 			content_node = c
 	
+	add_child(scrollbar_hide_timer)
+	scrollbar_hide_timer.timeout.connect(_scrollbar_hide_timer_timeout)
 	get_tree().node_added.connect(_on_node_added)
 
 func _process(delta: float) -> void:
@@ -121,6 +140,10 @@ func _process(delta: float) -> void:
 
 # Forwarding scroll inputs from scrollbar
 func _scrollbar_input(event: InputEvent) -> void:
+	if hide_scrollbar_over_time:
+		show_scrollbars()
+		scrollbar_hide_timer.start(scrollbar_hide_time)
+	
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
 		or event.button_index == MOUSE_BUTTON_WHEEL_UP\
@@ -129,6 +152,10 @@ func _scrollbar_input(event: InputEvent) -> void:
 			_gui_input(event)
 
 func _gui_input(event: InputEvent) -> void:
+	if hide_scrollbar_over_time:
+		show_scrollbars()
+		scrollbar_hide_timer.start(scrollbar_hide_time)
+
 	v_scrollbar_dragging = get_v_scroll_bar().has_focus() # != pressed => TODO
 	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
 	
@@ -246,10 +273,14 @@ func _draw() -> void:
 		draw_debug()
 
 # Sets default mouse filter for SmoothScroll children to MOUSE_FILTER_PASS
-func _on_node_added(node):
+func _on_node_added(node) -> void:
 	if node is Control and Engine.is_editor_hint():
 		if is_ancestor_of(node):
 			node.mouse_filter = Control.MOUSE_FILTER_PASS
+
+func _scrollbar_hide_timer_timeout() -> void:
+	if !any_scroll_bar_dragged():
+		hide_scrollbars()
 
 ##### Virtual functions
 ####################
@@ -258,7 +289,7 @@ func _on_node_added(node):
 ####################
 ##### LOGIC
 
-func scroll(vertical : bool, axis_velocity : float, axis_pos : float):
+func scroll(vertical : bool, axis_velocity : float, axis_pos : float) -> void:
 	# If no scroll needed, don't apply forces
 	if auto_allow_scroll:
 		if vertical:
@@ -338,7 +369,7 @@ func handle_scrollbar_drag() -> bool:
 		return true
 	return false
 
-func handle_content_dragging():
+func handle_content_dragging() -> void:
 	var calculate_dest = func(delta: float, damping: float) -> float:
 		var a = (1 - damping * 0.5 - 0.1)
 		if delta >= 0.0:
@@ -384,7 +415,7 @@ func handle_content_dragging():
 		velocity.x = x_pos - pos.x
 		pos.x = x_pos
 
-func calculate_distance():
+func calculate_distance() -> void:
 	bottom_distance = content_node.position.y + content_node.size.y - self.size.y
 	top_distance = content_node.position.y
 	right_distance = content_node.position.x + content_node.size.x - self.size.x
@@ -419,7 +450,7 @@ func will_stop_within(vertical : bool, vel : float) -> bool:
 	# Whether content node will stop inside the container
 	return stop_pos <= 0.0 and stop_pos >= min(diff, 0.0)
 
-func remove_all_children_focus(node : Node):
+func remove_all_children_focus(node : Node) -> void:
 	if node is Control:
 		var control = node as Control
 		control.release_focus()
@@ -427,7 +458,7 @@ func remove_all_children_focus(node : Node):
 	for child in node.get_children():
 		remove_all_children_focus(child)
 
-func update_state():
+func update_state() -> void:
 	if content_dragging\
 	or v_scrollbar_dragging\
 	or h_scrollbar_dragging\
@@ -436,7 +467,7 @@ func update_state():
 	else:
 		is_scrolling = false
 
-func init_drag_temp_data():
+func init_drag_temp_data() -> void:
 	drag_temp_data = [0.0, 0.0, top_distance, bottom_distance, left_distance, right_distance]
 
 ##### LOGIC
@@ -538,9 +569,10 @@ func scroll_to_right(duration:float=0.5) -> void:
 # Returns true if any scroll bar is being dragged
 func any_scroll_bar_dragged() -> bool:
 	if get_v_scroll_bar():
-		return get_v_scroll_bar().has_focus()
-	if get_h_scroll_bar():
-		return get_h_scroll_bar().has_focus()
+		if get_v_scroll_bar().has_focus():
+			return true
+	if get_h_scroll_bar().has_focus():
+			return true
 	return false
 
 # Returns true if there is enough content height to scroll
@@ -558,6 +590,18 @@ func should_scroll_horizontal() -> bool:
 	if not allow_horizontal_scroll:
 		velocity.x = 0.0
 	return allow_horizontal_scroll
+
+func hide_scrollbars() -> void:
+	var t := create_tween()
+	t.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
+	t.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
+	t.play()
+
+func show_scrollbars() -> void:
+	var t := create_tween()
+	t.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
+	t.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
+	t.play()
 
 ##### API FUNCTIONS
 ########################

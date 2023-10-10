@@ -142,6 +142,6 @@ offset_left = 232.0
 offset_top = 544.0
 offset_right = 487.0
 offset_bottom = 570.0
-text = "FPS: "
+text = "FPS: 60"
 
 [connection signal="value_changed" from="HSlider" to="." method="_on_h_slider_value_changed"]
