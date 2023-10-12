@@ -8,6 +8,11 @@ script/source = "extends Control
 
 func _ready():
 	$SmoothScrollContainer/Control/Button.grab_focus()
+
+
+func _on_h_slider_value_changed(value):
+	Engine.max_fps = $HSlider.value
+	$Label.text = \"FPS: \" + str($HSlider.value)
 "
 
 [sub_resource type="GDScript" id="GDScript_xu50n"]
@@ -88,6 +93,7 @@ offset_left = 72.0
 offset_top = 166.0
 offset_right = 155.0
 offset_bottom = 212.0
+mouse_filter = 1
 
 [node name="Button2" type="Button" parent="SmoothScrollContainer/Control"]
 layout_mode = 0
@@ -95,6 +101,7 @@ offset_left = 182.0
 offset_top = 369.0
 offset_right = 265.0
 offset_bottom = 415.0
+mouse_filter = 1
 
 [node name="Button3" type="Button" parent="SmoothScrollContainer/Control"]
 layout_mode = 0
@@ -102,6 +109,7 @@ offset_left = 74.0
 offset_top = 487.0
 offset_right = 157.0
 offset_bottom = 533.0
+mouse_filter = 1
 
 [node name="RichTextLabel" type="RichTextLabel" parent="."]
 layout_mode = 2
@@ -118,3 +126,22 @@ bbcode_enabled = true
 text = "[Property values]"
 scroll_following = true
 script = SubResource("GDScript_xu50n")
+
+[node name="HSlider" type="HSlider" parent="."]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 583.0
+offset_right = 703.0
+offset_bottom = 636.0
+max_value = 120.0
+value = 60.0
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 232.0
+offset_top = 544.0
+offset_right = 487.0
+offset_bottom = 570.0
+text = "FPS: 60"
+
+[connection signal="value_changed" from="HSlider" to="." method="_on_h_slider_value_changed"]
