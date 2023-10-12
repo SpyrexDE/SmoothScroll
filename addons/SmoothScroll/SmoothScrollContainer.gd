@@ -371,24 +371,21 @@ func handle_scrollbar_drag() -> bool:
 
 func handle_content_dragging() -> void:
 	var calculate_dest = func(delta: float, damping: float) -> float:
-		var a = (1 - damping * 0.5 - 0.1)
 		if delta >= 0.0:
-			return pow(delta + pow(a, 1/(1-a)), a) - pow(pow(a, 1/1-a), a)
+			return delta / (1 + delta * damping * 0.1)
 		else:
 			return delta
 	
 	var calculate_position = func(
-		distance1: float,		# Realtime distance
-		distance2: float,
 		temp_dist1: float,		# Temp distance
 		temp_dist2: float,
 		temp_relative: float	# Event's relative movement accumulation
 	) -> float:
-		if distance1 > 0.0:
+		if temp_relative + temp_dist1 > 0.0:
 			var delta = min(temp_relative, temp_relative + temp_dist1)
 			var dest = calculate_dest.call(delta, damping_drag)
 			return dest - min(0.0, temp_dist1)
-		elif distance2 < 0.0:
+		elif temp_relative + temp_dist2 < 0.0:
 			var delta = max(temp_relative, temp_relative + temp_dist2)
 			var dest = -calculate_dest.call(-delta, damping_drag)
 			return dest - max(0.0, temp_dist2)
@@ -396,8 +393,6 @@ func handle_content_dragging() -> void:
 	
 	if allow_vertical_scroll:
 		var y_pos = calculate_position.call(
-			top_distance,
-			bottom_distance,
 			drag_temp_data[2],	# Temp top_distance
 			drag_temp_data[3],	# Temp bottom_distance
 			drag_temp_data[1]	# Temp y relative accumulation
@@ -406,8 +401,6 @@ func handle_content_dragging() -> void:
 		pos.y = y_pos
 	if allow_horizontal_scroll:
 		var x_pos = calculate_position.call(
-			left_distance,
-			right_distance,
 			drag_temp_data[4],	# Temp left_distance
 			drag_temp_data[5],	# Temp right_distance
 			drag_temp_data[0]	# Temp x relative accumulation
