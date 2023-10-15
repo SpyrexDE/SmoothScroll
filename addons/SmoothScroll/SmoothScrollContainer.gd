@@ -37,10 +37,11 @@ var friction_scroll := 0.9
 var friction_drag := 0.9
 ## Hides scrollbar as long as not hovered or interacted with
 @export
-var hide_scrollbar_over_time:= false
+var hide_scrollbar_over_time:= false:
+	set(val): hide_scrollbar_over_time = _set_hide_scrollbar_over_time(val)
 ## Time after scrollbar starts to fade out when 'hide_scrollbar_over_time' is true
 @export
-var scrollbar_hide_time := 5
+var scrollbar_hide_time := 5.0
 ## Fadein time for scrollbar when 'hide_scrollbar_over_time' is true
 @export
 var scrollbar_fade_in_time := 0.2
@@ -121,7 +122,8 @@ func _ready() -> void:
 	
 	add_child(scrollbar_hide_timer)
 	scrollbar_hide_timer.timeout.connect(_scrollbar_hide_timer_timeout)
-	scrollbar_hide_timer.start(scrollbar_hide_time)
+	if hide_scrollbar_over_time:
+		scrollbar_hide_timer.start(scrollbar_hide_time)
 	get_tree().node_added.connect(_on_node_added)
 
 func _process(delta: float) -> void:
@@ -295,6 +297,18 @@ func _scrollbar_hide_timer_timeout() -> void:
 	if !any_scroll_bar_dragged():
 		hide_scrollbars()
 
+func _set_hide_scrollbar_over_time(value) -> bool:
+	if value == false:
+		if scrollbar_hide_timer != null:
+			scrollbar_hide_timer.stop()
+		if scrollbar_hide_tween != null:
+			scrollbar_hide_tween.kill()
+		get_h_scroll_bar().modulate = Color.WHITE
+		get_v_scroll_bar().modulate = Color.WHITE
+	else:
+		if scrollbar_hide_timer != null and scrollbar_hide_timer.is_inside_tree():
+			scrollbar_hide_timer.start(scrollbar_hide_time)
+	return value
 ##### Virtual functions
 ####################
 
