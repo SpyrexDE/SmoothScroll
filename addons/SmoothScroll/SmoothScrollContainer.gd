@@ -83,6 +83,8 @@ var left_distance := 0.0
 var drag_start_pos := Vector2.ZERO
 # Timer for hiding scroll bar
 var scrollbar_hide_timer := Timer.new()
+# Tween for hiding scroll bar
+var scrollbar_hide_tween : Tween
 # [0,1] Mouse or touch's relative movement accumulation when overdrag
 # [2,3,4,5] Top_distance, bottom_distance, left_distance, right_distance
 var drag_temp_data := []
@@ -119,6 +121,7 @@ func _ready() -> void:
 	
 	add_child(scrollbar_hide_timer)
 	scrollbar_hide_timer.timeout.connect(_scrollbar_hide_timer_timeout)
+	scrollbar_hide_timer.start(scrollbar_hide_time)
 	get_tree().node_added.connect(_on_node_added)
 
 func _process(delta: float) -> void:
@@ -604,16 +607,20 @@ func should_scroll_horizontal() -> bool:
 		return true
 
 func hide_scrollbars() -> void:
-	var t := create_tween()
-	t.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
-	t.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
-	t.play()
+	if scrollbar_hide_tween != null:
+		scrollbar_hide_tween.kill()
+	scrollbar_hide_tween = create_tween()
+	scrollbar_hide_tween.set_parallel(true)
+	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
+	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
 
 func show_scrollbars() -> void:
-	var t := create_tween()
-	t.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
-	t.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
-	t.play()
+	if scrollbar_hide_tween != null:
+		scrollbar_hide_tween.kill()
+	scrollbar_hide_tween = create_tween()
+	scrollbar_hide_tween.set_parallel(true)
+	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
+	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
 
 ##### API FUNCTIONS
 ########################
