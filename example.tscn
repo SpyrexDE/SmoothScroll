@@ -21,6 +21,14 @@ script/source = "extends RichTextLabel
 
 # Called when the node enters the scene tree for the first time.
 func _process(delta):
+	update_text()
+
+func _ready():
+	update_text()
+	scroll_to_line(get_line_count())
+
+
+func update_text():
 	text = \"\"
 	
 	var thisScript: GDScript = %SmoothScrollContainer.get_script()
@@ -124,7 +132,6 @@ size_flags_vertical = 3
 mouse_filter = 1
 bbcode_enabled = true
 text = "[Property values]"
-scroll_following = true
 script = SubResource("GDScript_xu50n")
 
 [node name="HSlider" type="HSlider" parent="."]

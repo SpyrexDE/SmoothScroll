@@ -37,10 +37,11 @@ var friction_scroll := 0.9
 var friction_drag := 0.9
 ## Hides scrollbar as long as not hovered or interacted with
 @export
-var hide_scrollbar_over_time:= false
+var hide_scrollbar_over_time:= false:
+	set(val): hide_scrollbar_over_time = _set_hide_scrollbar_over_time(val)
 ## Time after scrollbar starts to fade out when 'hide_scrollbar_over_time' is true
 @export
-var scrollbar_hide_time := 5
+var scrollbar_hide_time := 5.0
 ## Fadein time for scrollbar when 'hide_scrollbar_over_time' is true
 @export
 var scrollbar_fade_in_time := 0.2
@@ -83,6 +84,8 @@ var left_distance := 0.0
 var drag_start_pos := Vector2.ZERO
 # Timer for hiding scroll bar
 var scrollbar_hide_timer := Timer.new()
+# Tween for hiding scroll bar
+var scrollbar_hide_tween : Tween
 # [0,1] Mouse or touch's relative movement accumulation when overdrag
 # [2,3,4,5] Top_distance, bottom_distance, left_distance, right_distance
 var drag_temp_data := []
@@ -119,6 +122,8 @@ func _ready() -> void:
 	
 	add_child(scrollbar_hide_timer)
 	scrollbar_hide_timer.timeout.connect(_scrollbar_hide_timer_timeout)
+	if hide_scrollbar_over_time:
+		scrollbar_hide_timer.start(scrollbar_hide_time)
 	get_tree().node_added.connect(_on_node_added)
 
 func _process(delta: float) -> void:
@@ -162,39 +167,47 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:
-				if event.pressed && allow_vertical_scroll:
+				if event.pressed:
 					last_scroll_type = SCROLL_TYPE.WHEEL
 					if event.shift_pressed:
-						velocity.x -= speed
+						if should_scroll_horizontal():
+							velocity.x -= speed
 					else:
-						velocity.y -= speed
+						if should_scroll_vertical():
+							velocity.y -= speed
 					friction = friction_scroll
 					damping = damping_scroll
 			MOUSE_BUTTON_WHEEL_UP:
-				if event.pressed && allow_vertical_scroll:
+				if event.pressed:
 					last_scroll_type = SCROLL_TYPE.WHEEL
 					if event.shift_pressed:
-						velocity.x += speed
+						if should_scroll_horizontal():
+							velocity.x += speed
 					else:
-						velocity.y += speed
+						if should_scroll_vertical():
+							velocity.y += speed
 					friction = friction_scroll
 					damping = damping_scroll
 			MOUSE_BUTTON_WHEEL_LEFT:
-				if event.pressed && allow_horizontal_scroll:
+				if event.pressed:
 					last_scroll_type = SCROLL_TYPE.WHEEL
 					if event.shift_pressed:
-						velocity.y -= speed
+						if should_scroll_vertical():
+							velocity.y -= speed
 					else:
-						velocity.x += speed
+						if should_scroll_horizontal():
+							velocity.x += speed
 					friction = friction_scroll
 					damping = damping_scroll
 			MOUSE_BUTTON_WHEEL_RIGHT:
-				if event.pressed && allow_horizontal_scroll:
+				if event.pressed:
 					last_scroll_type = SCROLL_TYPE.WHEEL
 					if event.shift_pressed:
-						velocity.y += speed
+						if should_scroll_vertical():
+							velocity.y += speed
 					else:
-						velocity.x -= speed
+						if should_scroll_horizontal():
+							velocity.x -= speed
 					friction = friction_scroll
 					damping = damping_scroll
 			MOUSE_BUTTON_LEFT:
@@ -212,8 +225,10 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag or event is InputEventMouseMotion:
 		if content_dragging:
 			is_scrolling = true
-			drag_temp_data[0] += event.relative.x
-			drag_temp_data[1] += event.relative.y
+			if should_scroll_horizontal():
+				drag_temp_data[0] += event.relative.x
+			if should_scroll_vertical():
+				drag_temp_data[1] += event.relative.y
 			remove_all_children_focus(self)
 			handle_content_dragging()
 	
@@ -282,6 +297,18 @@ func _scrollbar_hide_timer_timeout() -> void:
 	if !any_scroll_bar_dragged():
 		hide_scrollbars()
 
+func _set_hide_scrollbar_over_time(value) -> bool:
+	if value == false:
+		if scrollbar_hide_timer != null:
+			scrollbar_hide_timer.stop()
+		if scrollbar_hide_tween != null:
+			scrollbar_hide_tween.kill()
+		get_h_scroll_bar().modulate = Color.WHITE
+		get_v_scroll_bar().modulate = Color.WHITE
+	else:
+		if scrollbar_hide_timer != null and scrollbar_hide_timer.is_inside_tree():
+			scrollbar_hide_timer.start(scrollbar_hide_time)
+	return value
 ##### Virtual functions
 ####################
 
@@ -291,13 +318,12 @@ func _scrollbar_hide_timer_timeout() -> void:
 
 func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : float):
 	# If no scroll needed, don't apply forces
-	if auto_allow_scroll:
-		if vertical:
-			if not should_scroll_vertical():
-				return
-		else:
-			if not should_scroll_horizontal():
-				return
+	if vertical:
+		if not should_scroll_vertical():
+			return
+	else:
+		if not should_scroll_horizontal():
+			return
 	
 	# If velocity is too low, just set it to 0
 	if abs(axis_velocity) <= just_stop_under:
@@ -338,23 +364,28 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 		# Apply a speed that will make it scroll back exactly
 		if will_stop_within(vertical, axis_velocity):
 			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
-		# Snap to boundary if close enough
-		if dist == top_distance && dist < just_snap_under || dist == bottom_distance && dist > -just_snap_under:
-			axis_velocity = 0.0
-			axis_pos -= dist
-		return [axis_velocity, axis_pos]
-
+		return axis_velocity
+	
 	var result = [axis_velocity, axis_pos]
 	
-	# Overdrag on top
+	# Overdrag on top or left
 	if dist1 > 0 and not will_stop_within(vertical, axis_velocity):
-		result = calculate.call(dist1)
+		result[0] = calculate.call(dist1)
+		# Snap to boundary if close enough
+		if dist1 < just_snap_under and abs(axis_velocity) < just_snap_under:
+			result[0] = 0.0
+			result[1] -= dist1
+		return result
 	
-	# Overdrag on bottom
+	# Overdrag on bottom or right
 	if dist2 < 0 and not will_stop_within(vertical, axis_velocity):
-		result = calculate.call(dist2)
-			
-			
+		result[0] = calculate.call(dist2)
+		# Snap to boundary if close enough
+		if dist2 > -just_snap_under and abs(axis_velocity) < just_snap_under:
+			result[0] = 0.0
+			result[1] -= dist2
+		return result
+	
 	return result
 
 # Returns true when scrollbar was dragged
@@ -392,7 +423,7 @@ func handle_content_dragging() -> void:
 			return dest - max(0.0, temp_dist2)
 		else: return temp_relative
 	
-	if allow_vertical_scroll:
+	if should_scroll_vertical():
 		var y_pos = calculate_position.call(
 			drag_temp_data[2],	# Temp top_distance
 			drag_temp_data[3],	# Temp bottom_distance
@@ -400,7 +431,7 @@ func handle_content_dragging() -> void:
 		) + drag_start_pos.y
 		velocity.y = (y_pos - pos.y) / get_process_delta_time() / 100
 		pos.y = y_pos
-	if allow_horizontal_scroll:
+	if should_scroll_horizontal():
 		var x_pos = calculate_position.call(
 			drag_temp_data[4],	# Temp left_distance
 			drag_temp_data[5],	# Temp right_distance
@@ -571,31 +602,39 @@ func any_scroll_bar_dragged() -> bool:
 
 # Returns true if there is enough content height to scroll
 func should_scroll_vertical() -> bool:
-	if content_node.size.y - self.size.y < 1:
-		return false
-	if not allow_vertical_scroll:
+	var disable_scroll = content_node.size.y - self.size.y < 1 or not allow_vertical_scroll\
+			if auto_allow_scroll else not allow_vertical_scroll
+	if disable_scroll:
 		velocity.y = 0.0
-	return allow_vertical_scroll
+		return false
+	else:
+		return true
 
 # Returns true if there is enough content width to scroll
 func should_scroll_horizontal() -> bool:
-	if content_node.size.x - self.size.x < 1:
-		return false
-	if not allow_horizontal_scroll:
+	var disable_scroll = content_node.size.x - self.size.x < 1 or not allow_horizontal_scroll\
+			if auto_allow_scroll else not allow_horizontal_scroll
+	if disable_scroll:
 		velocity.x = 0.0
-	return allow_horizontal_scroll
+		return false
+	else:
+		return true
 
 func hide_scrollbars() -> void:
-	var t := create_tween()
-	t.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
-	t.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
-	t.play()
+	if scrollbar_hide_tween != null:
+		scrollbar_hide_tween.kill()
+	scrollbar_hide_tween = create_tween()
+	scrollbar_hide_tween.set_parallel(true)
+	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
+	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
 
 func show_scrollbars() -> void:
-	var t := create_tween()
-	t.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
-	t.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
-	t.play()
+	if scrollbar_hide_tween != null:
+		scrollbar_hide_tween.kill()
+	scrollbar_hide_tween = create_tween()
+	scrollbar_hide_tween.set_parallel(true)
+	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
+	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
 
 ##### API FUNCTIONS
 ########################
