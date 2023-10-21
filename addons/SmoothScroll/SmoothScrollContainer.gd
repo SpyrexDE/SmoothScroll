@@ -8,6 +8,10 @@ extends ScrollContainer
 ## Drag impact for one scroll input
 @export_range(0, 10, 0.01, "or_greater")
 var speed := 5.0
+## Whether the content of this container should be allowed to overshoot at the ends
+## before interpolating back to its bounds
+@export
+var allow_overdragging := true
 ## Softness of damping when "overdragging" with wheel button
 @export_range(0, 1)
 var damping_scroll := 0.1
@@ -363,28 +367,54 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 		# If it will be fast enough to scroll back next frame
 		# Apply a speed that will make it scroll back exactly
 		if will_stop_within(vertical, axis_velocity):
-			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
+			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity)))
+		# Prevent out of bounds if we disallow overdrag
+		elif not allow_overdragging:
+			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity)))
+
 		return axis_velocity
 	
 	var result = [axis_velocity, axis_pos]
 	
+	if (dist1 < 0 or dist2 > 0) and will_stop_within(vertical, axis_velocity):
+		return result
+
+	if not allow_overdragging:
+		# If we're going to overshoot snap to boundary
+		# Prevent overshoot top or left
+		if dist1 >= 0:
+			result[0] = 0.0
+			result[1] -= dist1
+		# Prevent overshoot bottom or right
+		elif dist2 <= 0:
+			result[0] = 0.0
+			result[1] -= dist2
+		# An overshoot can be detected within axis_velocity value
+		# This prevents a single frame overshoot correction jitter
+		elif dist1 >= -axis_velocity:
+			# Recalculate velocity to stop at boundary exactly
+			result[0] = calculate.call(dist1)
+		elif dist2 <= -axis_velocity:
+			result[0] = calculate.call(dist2)
+
+		return result
+
 	# Overdrag on top or left
-	if dist1 > 0 and not will_stop_within(vertical, axis_velocity):
-		result[0] = calculate.call(dist1)
+	if dist1 > 0:
 		# Snap to boundary if close enough
 		if dist1 < just_snap_under and abs(axis_velocity) < just_snap_under:
 			result[0] = 0.0
 			result[1] -= dist1
-		return result
-	
+		else: 
+			result[0] = calculate.call(dist1)
 	# Overdrag on bottom or right
-	if dist2 < 0 and not will_stop_within(vertical, axis_velocity):
-		result[0] = calculate.call(dist2)
+	elif dist2 < 0:
 		# Snap to boundary if close enough
 		if dist2 > -just_snap_under and abs(axis_velocity) < just_snap_under:
 			result[0] = 0.0
 			result[1] -= dist2
-		return result
+		else:
+			result[0] = calculate.call(dist2)
 	
 	return result
 
