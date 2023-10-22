@@ -357,6 +357,18 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 	var dist1 = top_distance if vertical else left_distance
 	var dist2 = bottom_distance if vertical else right_distance
 	
+	# Modify dist2 if content is smaller than container
+	if vertical:
+		var size_y = size.y
+		if get_h_scroll_bar().visible:
+			size_y -= get_h_scroll_bar().size.y
+		dist2 += max(size_y - content_node.size.y, 0)
+	else:
+		var size_x = content_node.size.x
+		if get_v_scroll_bar().visible:
+			size_x += get_v_scroll_bar().size.x
+		dist2 += max(size_x - content_node.size.x, 0)
+	
 	var calculate = func(dist):
 		# Apply bounce force
 		axis_velocity = lerp(axis_velocity, -dist/8*get_process_delta_time()*100, damping)
