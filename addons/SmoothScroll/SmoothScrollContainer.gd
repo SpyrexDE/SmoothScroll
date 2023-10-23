@@ -366,7 +366,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 	else:
 		var size_x = content_node.size.x
 		if get_v_scroll_bar().visible:
-			size_x += get_v_scroll_bar().size.x
+			size_x -= get_v_scroll_bar().size.x
 		dist2 += max(size_x - content_node.size.x, 0)
 	
 	var calculate = func(dist):
