@@ -338,6 +338,7 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 		var result = handle_overdrag(vertical, axis_velocity, axis_pos)
 		axis_velocity = result[0]
 		axis_pos = result[1]
+
 		# Move content node by applying velocity
 		axis_pos += axis_velocity * (pow(friction, delta*100) - 1) / log(friction)
 		axis_velocity *= pow(friction, delta*100)
@@ -348,10 +349,28 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 		return
 	
 	if vertical:
-		content_node.position.y = axis_pos
+		if not allow_overdragging:
+			# Clamp if calculated position is beyond boundary
+			if is_outside_top_boundary(axis_pos):
+				axis_pos = 0.0
+				axis_velocity = 0.0
+			elif is_outside_bottom_boundary(axis_pos):
+				axis_pos = self.size.y - content_node.size.y
+				axis_velocity = 0.0
+
+		content_node.position.y = axis_pos 
 		pos.y = axis_pos
 		velocity.y = axis_velocity
 	else:
+		if not allow_overdragging:
+			# Clamp if calculated position is beyond boundary
+			if is_outside_left_boundary(axis_pos):
+				axis_pos = 0.0
+				axis_velocity = 0.0
+			elif is_outside_right_boundary(axis_pos):
+				axis_pos = self.size.x - content_node.size.x
+				axis_velocity = 0.0
+
 		content_node.position.x = axis_pos
 		pos.x = axis_pos
 		velocity.x = axis_velocity
@@ -368,35 +387,12 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 		# Apply a speed that will make it scroll back exactly
 		if will_stop_within(vertical, axis_velocity):
 			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity)))
-		# Prevent out of bounds if we disallow overdrag
-		elif not allow_overdragging:
-			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity)))
 
 		return axis_velocity
 	
 	var result = [axis_velocity, axis_pos]
 	
-	if (dist1 < 0 or dist2 > 0) and will_stop_within(vertical, axis_velocity):
-		return result
-
-	if not allow_overdragging:
-		# If we're going to overshoot snap to boundary
-		# Prevent overshoot top or left
-		if dist1 >= 0:
-			result[0] = 0.0
-			result[1] -= dist1
-		# Prevent overshoot bottom or right
-		elif dist2 <= 0:
-			result[0] = 0.0
-			result[1] -= dist2
-		# An overshoot can be detected within axis_velocity value
-		# This prevents a single frame overshoot correction jitter
-		elif dist1 >= -axis_velocity:
-			# Recalculate velocity to stop at boundary exactly
-			result[0] = calculate.call(dist1)
-		elif dist2 <= -axis_velocity:
-			result[0] = calculate.call(dist2)
-
+	if not (dist1 > 0 or dist2 < 0) and will_stop_within(vertical, axis_velocity):
 		return result
 
 	# Overdrag on top or left
@@ -620,6 +616,18 @@ func scroll_to_left(duration:float=0.5) -> void:
 # Scrolls to right
 func scroll_to_right(duration:float=0.5) -> void:
 	scroll_x_to(self.size.x - content_node.size.x, duration)
+
+func is_outside_top_boundary(y_pos: float = pos.y) -> bool:
+	return y_pos > 0.0
+
+func is_outside_bottom_boundary(y_pos: float = pos.y) -> bool:
+	return y_pos < self.size.y - content_node.size.y
+
+func is_outside_left_boundary(x_pos: float = pos.x) -> bool:
+	return x_pos > 0.0
+
+func is_outside_right_boundary(x_pos: float = pos.x) -> bool:
+	return x_pos < self.size.x - content_node.size.x
 
 # Returns true if any scroll bar is being dragged
 func any_scroll_bar_dragged() -> bool:
