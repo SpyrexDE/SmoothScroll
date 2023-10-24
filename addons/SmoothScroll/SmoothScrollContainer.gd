@@ -392,7 +392,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 	
 	var result = [axis_velocity, axis_pos]
 	
-	if not (dist1 > 0 or dist2 < 0) and will_stop_within(vertical, axis_velocity):
+	if not (dist1 > 0 or dist2 < 0) or will_stop_within(vertical, axis_velocity):
 		return result
 
 	# Overdrag on top or left
