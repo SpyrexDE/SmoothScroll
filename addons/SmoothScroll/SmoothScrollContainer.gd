@@ -8,6 +8,10 @@ extends ScrollContainer
 ## Drag impact for one scroll input
 @export_range(0, 10, 0.01, "or_greater")
 var speed := 5.0
+## Whether the content of this container should be allowed to overshoot at the ends
+## before interpolating back to its bounds
+@export
+var allow_overdragging := true
 ## Softness of damping when "overdragging" with wheel button
 @export_range(0, 1)
 var damping_scroll := 0.1
@@ -334,6 +338,7 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 		var result = handle_overdrag(vertical, axis_velocity, axis_pos)
 		axis_velocity = result[0]
 		axis_pos = result[1]
+
 		# Move content node by applying velocity
 		axis_pos += axis_velocity * (pow(friction, delta*100) - 1) / log(friction)
 		axis_velocity *= pow(friction, delta*100)
@@ -344,10 +349,28 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 		return
 	
 	if vertical:
-		content_node.position.y = axis_pos
+		if not allow_overdragging:
+			# Clamp if calculated position is beyond boundary
+			if is_outside_top_boundary(axis_pos):
+				axis_pos = 0.0
+				axis_velocity = 0.0
+			elif is_outside_bottom_boundary(axis_pos):
+				axis_pos = self.size.y - content_node.size.y
+				axis_velocity = 0.0
+
+		content_node.position.y = axis_pos 
 		pos.y = axis_pos
 		velocity.y = axis_velocity
 	else:
+		if not allow_overdragging:
+			# Clamp if calculated position is beyond boundary
+			if is_outside_left_boundary(axis_pos):
+				axis_pos = 0.0
+				axis_velocity = 0.0
+			elif is_outside_right_boundary(axis_pos):
+				axis_pos = self.size.x - content_node.size.x
+				axis_velocity = 0.0
+
 		content_node.position.x = axis_pos
 		pos.x = axis_pos
 		velocity.x = axis_velocity
@@ -375,28 +398,31 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 		# If it will be fast enough to scroll back next frame
 		# Apply a speed that will make it scroll back exactly
 		if will_stop_within(vertical, axis_velocity):
-			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity))) 
+			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity)))
+
 		return axis_velocity
 	
 	var result = [axis_velocity, axis_pos]
 	
+	if not (dist1 > 0 or dist2 < 0) or will_stop_within(vertical, axis_velocity):
+		return result
+
 	# Overdrag on top or left
-	if dist1 > 0 and not will_stop_within(vertical, axis_velocity):
-		result[0] = calculate.call(dist1)
+	if dist1 > 0:
 		# Snap to boundary if close enough
 		if dist1 < just_snap_under and abs(axis_velocity) < just_snap_under:
 			result[0] = 0.0
 			result[1] -= dist1
-		return result
-	
+		else: 
+			result[0] = calculate.call(dist1)
 	# Overdrag on bottom or right
-	if dist2 < 0 and not will_stop_within(vertical, axis_velocity):
-		result[0] = calculate.call(dist2)
+	elif dist2 < 0:
 		# Snap to boundary if close enough
 		if dist2 > -just_snap_under and abs(axis_velocity) < just_snap_under:
 			result[0] = 0.0
 			result[1] -= dist2
-		return result
+		else:
+			result[0] = calculate.call(dist2)
 	
 	return result
 
@@ -602,6 +628,18 @@ func scroll_to_left(duration:float=0.5) -> void:
 # Scrolls to right
 func scroll_to_right(duration:float=0.5) -> void:
 	scroll_x_to(self.size.x - content_node.size.x, duration)
+
+func is_outside_top_boundary(y_pos: float = pos.y) -> bool:
+	return y_pos > 0.0
+
+func is_outside_bottom_boundary(y_pos: float = pos.y) -> bool:
+	return y_pos < self.size.y - content_node.size.y
+
+func is_outside_left_boundary(x_pos: float = pos.x) -> bool:
+	return x_pos > 0.0
+
+func is_outside_right_boundary(x_pos: float = pos.x) -> bool:
+	return x_pos < self.size.x - content_node.size.x
 
 # Returns true if any scroll bar is being dragged
 func any_scroll_bar_dragged() -> bool:
