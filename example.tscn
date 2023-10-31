@@ -18,25 +18,32 @@ func _on_h_slider_value_changed(value):
 [sub_resource type="GDScript" id="GDScript_xu50n"]
 script/source = "extends RichTextLabel
 
+var thread = Thread.new()
 
-# Called when the node enters the scene tree for the first time.
+var property_list
+var new_text := \"\"
+
 func _process(delta):
-	update_text()
+	# Setting \"text\" will call queue_redraw() as well, which is not safe for multi-thread.
+	text = new_text
 
 func _ready():
-	update_text()
+	var this_script = %SmoothScrollContainer.get_script()
+	property_list = this_script.get_script_property_list()
+	# Pass in SmoothScrollContainer as instance or it could be null in multi-thread.
+	thread.start(update_text.bind(%SmoothScrollContainer))
 	scroll_to_line(get_line_count())
 
 
-func update_text():
-	text = \"\"
-	
-	var thisScript: GDScript = %SmoothScrollContainer.get_script()
-	for propertyInfo in thisScript.get_script_property_list():
-		var propertyName : String = propertyInfo.name
-		var propertyValue = %SmoothScrollContainer.get(propertyName)
-		var propertyType = propertyInfo.usage
-		text += \"[color=green]%s:[/color] %s\\n\" % [propertyName, propertyValue] if propertyType == 4096 else \"[color=yellow]%s:[/color] %s\\n\" % [propertyName, propertyValue]
+func update_text(ssc:ScrollContainer):
+	while true:
+		await get_tree().process_frame
+		new_text = \"\"
+		for propertyInfo in property_list:
+			var propertyName : String = propertyInfo.name
+			var propertyValue = ssc.call(\"get\", propertyName)
+			var propertyType = propertyInfo.usage
+			new_text += \"[color=green]%s:[/color] %s\\n\" % [propertyName, propertyValue] if propertyType == 4096 else \"[color=yellow]%s:[/color] %s\\n\" % [propertyName, propertyValue]
 "
 
 [node name="Example" type="Control"]
