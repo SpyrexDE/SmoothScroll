@@ -237,6 +237,12 @@ func _gui_input(event: InputEvent) -> void:
 			remove_all_children_focus(self)
 			handle_content_dragging()
 	
+	if event is InputEventPanGesture:
+		if should_scroll_horizontal():
+			velocity.x = -event.delta.x * speed
+		if should_scroll_vertical():
+			velocity.y = -event.delta.y * speed
+	
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			content_dragging = true
