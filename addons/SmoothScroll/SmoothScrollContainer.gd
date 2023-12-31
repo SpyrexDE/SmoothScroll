@@ -671,21 +671,25 @@ func should_scroll_horizontal() -> bool:
 	else:
 		return true
 
-func hide_scrollbars() -> void:
+## Fades out scrollbars within given [param time].[br]
+## Default for [param time] is current [member scrollbar_fade_out_time]
+func hide_scrollbars(time: float = scrollbar_fade_out_time) -> void:
 	if scrollbar_hide_tween != null:
 		scrollbar_hide_tween.kill()
 	scrollbar_hide_tween = create_tween()
 	scrollbar_hide_tween.set_parallel(true)
-	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
-	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, scrollbar_fade_out_time)
+	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, time)
+	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, time)
 
-func show_scrollbars() -> void:
+## Fades in scrollbars within given [param time].[br]
+## Default for [param time] is current [member scrollbar_fade_in_time]
+func show_scrollbars(time: float = scrollbar_fade_in_time) -> void:
 	if scrollbar_hide_tween != null:
 		scrollbar_hide_tween.kill()
 	scrollbar_hide_tween = create_tween()
 	scrollbar_hide_tween.set_parallel(true)
-	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
-	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, scrollbar_fade_in_time)
+	scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, time)
+	scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, time)
 
 ##### API FUNCTIONS
 ########################
