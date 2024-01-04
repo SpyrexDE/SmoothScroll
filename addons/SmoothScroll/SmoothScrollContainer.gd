@@ -580,7 +580,7 @@ func scroll_x_to(x_pos: float, duration:float=0.5) -> void:
 	velocity.x = 0.0
 	x_pos = clampf(x_pos, self.size.x-content_node.size.x, 0.0)
 	var tween = create_tween()
-	var tweener = tween.tween_property(self, "pos:x", x_pos, 0.5)
+	var tweener = tween.tween_property(self, "pos:x", x_pos, duration)
 	tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
 ## Scrolls to specific y position
