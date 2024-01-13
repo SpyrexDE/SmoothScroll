@@ -77,16 +77,18 @@ var friction := 0.9
 var content_dragging := false
 ## Damping to use
 var damping := 0.1
-## Distance between content_node's bottom and bottom of the scroll box 
+## Distance between content_node's bottom and bottom of the scroll box
 var bottom_distance := 0.0
 ## Distance between content_node and top of the scroll box
 var top_distance := 0.0
-## Distance between content_node's right and right of the scroll box 
+## Distance between content_node's right and right of the scroll box
 var right_distance := 0.0
 ## Distance between content_node and left of the scroll box
 var left_distance := 0.0
 ## Content node position where dragging starts
 var drag_start_pos := Vector2.ZERO
+##
+var drag_old_pos := Vector2.ZERO
 ## Timer for hiding scroll bar
 var scrollbar_hide_timer := Timer.new()
 ## Tween for hiding scroll bar
@@ -124,7 +126,7 @@ func _ready() -> void:
 	for c in get_children():
 		if not c is ScrollBar:
 			content_node = c
-	
+
 	add_child(scrollbar_hide_timer)
 	scrollbar_hide_timer.timeout.connect(_scrollbar_hide_timer_timeout)
 	if hide_scrollbar_over_time:
@@ -153,7 +155,7 @@ func _scrollbar_input(event: InputEvent) -> void:
 	if hide_scrollbar_over_time:
 		show_scrollbars()
 		scrollbar_hide_timer.start(scrollbar_hide_time)
-	
+
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
 		or event.button_index == MOUSE_BUTTON_WHEEL_UP\
@@ -168,7 +170,7 @@ func _gui_input(event: InputEvent) -> void:
 
 	v_scrollbar_dragging = get_v_scroll_bar().has_focus() # != pressed => TODO
 	h_scrollbar_dragging = get_h_scroll_bar().has_focus()
-	
+
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_DOWN:
@@ -221,34 +223,37 @@ func _gui_input(event: InputEvent) -> void:
 					last_scroll_type = SCROLL_TYPE.DRAG
 					friction = 0.0
 					drag_start_pos = content_node.position
+					drag_old_pos = event.position
 					init_drag_temp_data()
 				else:
 					content_dragging = false
 					friction = friction_drag
 					damping = damping_drag
-	
+
 	if event is InputEventScreenDrag or event is InputEventMouseMotion:
 		if content_dragging:
 			is_scrolling = true
 			if should_scroll_horizontal():
-				drag_temp_data[0] += event.relative.x
+				drag_temp_data[0] += event.position.x - drag_old_pos.x
 			if should_scroll_vertical():
-				drag_temp_data[1] += event.relative.y
+				drag_temp_data[1] += event.position.y - drag_old_pos.y
+			drag_old_pos = event.position
 			remove_all_children_focus(self)
 			handle_content_dragging()
-	
+
 	if event is InputEventPanGesture:
 		if should_scroll_horizontal():
 			velocity.x = -event.delta.x * speed
 		if should_scroll_vertical():
 			velocity.y = -event.delta.y * speed
-	
+
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			content_dragging = true
 			last_scroll_type = SCROLL_TYPE.DRAG
 			friction = 0.0
 			drag_start_pos = content_node.position
+			drag_old_pos = event.position
 			init_drag_temp_data()
 		else:
 			content_dragging = false
@@ -266,23 +271,23 @@ func _on_focus_changed(control: Control) -> void:
 		return
 	if not follow_focus_:
 		return
-	
+
 	var focus_size_x = control.size.x
 	var focus_size_y = control.size.y
 	var focus_left = control.global_position.x - self.global_position.x
 	var focus_right = focus_left + focus_size_x
 	var focus_top = control.global_position.y - self.global_position.y
 	var focus_bottom = focus_top + focus_size_y
-	
+
 	if focus_top < 0.0:
 		scroll_y_to(content_node.position.y - focus_top + follow_focus_margin)
-	
+
 	if focus_bottom > self.size.y:
 		scroll_y_to(content_node.position.y - focus_bottom + self.size.y - follow_focus_margin)
-	
+
 	if focus_left < 0.0:
 		scroll_x_to(content_node.position.x - focus_left + follow_focus_margin)
-	
+
 	if focus_right > self.size.x:
 		scroll_x_to(content_node.position.x - focus_right + self.size.x - follow_focus_margin)
 
@@ -335,11 +340,11 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 	else:
 		if not should_scroll_horizontal():
 			return
-	
+
 	# If velocity is too low, just set it to 0
 	if abs(axis_velocity) <= just_stop_under:
 		axis_velocity = 0.0
-	
+
 	# Applies counterforces when overdragging
 	if not content_dragging:
 		var result = handle_overdrag(vertical, axis_velocity, axis_pos)
@@ -349,12 +354,12 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 		# Move content node by applying velocity
 		axis_pos += axis_velocity * (pow(friction, delta*100) - 1) / log(friction)
 		axis_velocity *= pow(friction, delta*100)
-	
+
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
 	if handle_scrollbar_drag():
 		return
-	
+
 	if vertical:
 		if not allow_overdragging:
 			# Clamp if calculated position is beyond boundary
@@ -365,7 +370,7 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 				axis_pos = self.size.y - content_node.size.y
 				axis_velocity = 0.0
 
-		content_node.position.y = axis_pos 
+		content_node.position.y = axis_pos
 		pos.y = axis_pos
 		velocity.y = axis_velocity
 	else:
@@ -386,7 +391,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 	# Left/Right or Top/Bottom depending on x or y
 	var dist1 = top_distance if vertical else left_distance
 	var dist2 = bottom_distance if vertical else right_distance
-	
+
 	# Modify dist2 if content is smaller than container
 	if vertical:
 		var size_y = size.y
@@ -398,7 +403,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 		if get_v_scroll_bar().visible:
 			size_x -= get_v_scroll_bar().size.x
 		dist2 += max(size_x - content_node.size.x, 0)
-	
+
 	var calculate = func(dist):
 		# Apply bounce force
 		axis_velocity = lerp(axis_velocity, -dist/8*get_process_delta_time()*100, damping)
@@ -408,9 +413,9 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 			axis_velocity = -dist*(1-friction)/(1-pow(friction, stop_frame(axis_velocity)))
 
 		return axis_velocity
-	
+
 	var result = [axis_velocity, axis_pos]
-	
+
 	if not (dist1 > 0 or dist2 < 0) or will_stop_within(vertical, axis_velocity):
 		return result
 
@@ -420,7 +425,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 		if dist1 < just_snap_under and abs(axis_velocity) < just_snap_under:
 			result[0] = 0.0
 			result[1] -= dist1
-		else: 
+		else:
 			result[0] = calculate.call(dist1)
 	# Overdrag on bottom or right
 	elif dist2 < 0:
@@ -430,7 +435,7 @@ func handle_overdrag(vertical : bool, axis_velocity : float, axis_pos : float) -
 			result[1] -= dist2
 		else:
 			result[0] = calculate.call(dist2)
-	
+
 	return result
 
 ## Returns true when scrollbar was dragged
@@ -439,7 +444,7 @@ func handle_scrollbar_drag() -> bool:
 		velocity.x = 0.0
 		pos.x = content_node.position.x
 		return true
-	
+
 	if v_scrollbar_dragging:
 		velocity.y = 0.0
 		pos.y = content_node.position.y
@@ -452,7 +457,7 @@ func handle_content_dragging() -> void:
 			return delta / (1 + delta * damping * 0.1)
 		else:
 			return delta
-	
+
 	var calculate_position = func(
 		temp_dist1: float,		# Temp distance
 		temp_dist2: float,
@@ -467,7 +472,7 @@ func handle_content_dragging() -> void:
 			var dest = -calculate_dest.call(-delta, damping_drag)
 			return dest - max(0.0, temp_dist2)
 		else: return temp_relative
-	
+
 	if should_scroll_vertical():
 		var y_pos = calculate_position.call(
 			drag_temp_data[2],	# Temp top_distance
@@ -524,7 +529,7 @@ func remove_all_children_focus(node : Node) -> void:
 	if node is Control:
 		var control = node as Control
 		control.release_focus()
-	
+
 	for child in node.get_children():
 		remove_all_children_focus(child)
 
