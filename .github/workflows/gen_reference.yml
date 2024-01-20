@@ -1,0 +1,57 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      
+      # Setup python 3.x
+      - name: Setup Python
+        uses: actions/setup-python@v2.2.2
+
+      - name: Setup Godot
+        # You may pin to the exact commit or the version.
+        # uses: Vitorgus/Setup-Godot@3d0ca0439ee22febb8fcc97fad12e8ac1329144e
+        uses: Vitorgus/Setup-Godot@v1.0.0
+        with:
+          # Godot version to download
+          godot-version: 4.1.3
+          # If it should also download and cache the export templates
+          download-templates: false
+
+      - name: Install and clone GDScript-docs-maker
+        run: |
+          python3 -m pip install gdscript_docs_maker
+          git clone https://github.com/GDQuest/gdscript-docs-maker.git
+
+      - name: Generate docs
+        run: |
+          cd gdscript-docs-maker/
+          ./generate_reference .. -o ../docs
+
+      - name: Commit documentation
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add docs/
+          git commit -m "Update documentation 📚"
+          git push
