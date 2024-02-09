@@ -19,6 +19,12 @@ var damping_scroll := 0.1
 ## Softness of damping when "overdragging" with dragging
 @export_range(0, 1)
 var damping_drag := 0.1
+## Allow dragging with mouse or not
+@export
+var drag_with_mouse = true
+## Allow dragging with touch or not
+@export
+var drag_with_touch = true
 ## Scrolls to currently focused child element
 @export
 var follow_focus_ := true
@@ -217,6 +223,7 @@ func _gui_input(event: InputEvent) -> void:
 					damping = damping_scroll
 			MOUSE_BUTTON_LEFT:
 				if event.pressed:
+					if !drag_with_mouse: return
 					content_dragging = true
 					last_scroll_type = SCROLL_TYPE.DRAG
 					friction = 0.0
@@ -227,7 +234,8 @@ func _gui_input(event: InputEvent) -> void:
 					friction = friction_drag
 					damping = damping_drag
 	
-	if event is InputEventScreenDrag or event is InputEventMouseMotion:
+	if (event is InputEventScreenDrag and drag_with_touch) \
+			or (event is InputEventMouseMotion and drag_with_mouse):
 		if content_dragging:
 			is_scrolling = true
 			if should_scroll_horizontal():
@@ -245,6 +253,7 @@ func _gui_input(event: InputEvent) -> void:
 	
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			if !drag_with_touch: return
 			content_dragging = true
 			last_scroll_type = SCROLL_TYPE.DRAG
 			friction = 0.0
