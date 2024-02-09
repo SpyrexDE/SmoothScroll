@@ -219,7 +219,6 @@ func _gui_input(event: InputEvent) -> void:
 				if event.pressed:
 					content_dragging = true
 					last_scroll_type = SCROLL_TYPE.DRAG
-					friction = 0.0
 					drag_start_pos = content_node.position
 					init_drag_temp_data()
 				else:
@@ -247,7 +246,6 @@ func _gui_input(event: InputEvent) -> void:
 		if event.pressed:
 			content_dragging = true
 			last_scroll_type = SCROLL_TYPE.DRAG
-			friction = 0.0
 			drag_start_pos = content_node.position
 			init_drag_temp_data()
 		else:
@@ -345,10 +343,11 @@ func scroll(vertical : bool, axis_velocity : float, axis_pos : float, delta : fl
 		var result = handle_overdrag(vertical, axis_velocity, axis_pos)
 		axis_velocity = result[0]
 		axis_pos = result[1]
-
 		# Move content node by applying velocity
 		axis_pos += axis_velocity * (pow(friction, delta*100) - 1) / log(friction)
 		axis_velocity *= pow(friction, delta*100)
+	else:
+		axis_velocity = 0.0
 	
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
