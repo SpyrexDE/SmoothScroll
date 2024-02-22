@@ -239,7 +239,7 @@ func _gui_input(event: InputEvent) -> void:
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
 	var is_child := false
-	if content_node.is_ancestor_of(control):
+	if content_node.is_a_parent_of(control):
 		is_child = true
 	if not is_child:
 		return
@@ -248,9 +248,9 @@ func _on_focus_changed(control: Control) -> void:
 	
 	var focus_size_x = control.rect_size.x
 	var focus_size_y = control.rect_size.y
-	var focus_left = control.global_position.x - self.global_position.x
+	var focus_left = control.rect_global_position.x - self.rect_global_position.x
 	var focus_right = focus_left + focus_size_x
-	var focus_top = control.global_position.y - self.global_position.y
+	var focus_top = control.rect_global_position.y - self.rect_global_position.y
 	var focus_bottom = focus_top + focus_size_y
 	
 	if focus_top < 0.0:
