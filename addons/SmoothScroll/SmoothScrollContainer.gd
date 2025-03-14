@@ -151,17 +151,8 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint(): return
 	scroll(true, velocity.y, pos.y, delta)
 	scroll(false, velocity.x, pos.x, delta)
-	# Update vertical scroll bar
-	get_v_scroll_bar().set_value_no_signal(-pos.y)
-	get_v_scroll_bar().queue_redraw()
-	# Update horizontal scroll bar
-	get_h_scroll_bar().set_value_no_signal(-pos.x)
-	get_h_scroll_bar().queue_redraw()
-	# Always show sroll bars when scrolling or mouse is on any scroll bar
-	if hide_scrollbar_over_time and (is_scrolling or mouse_on_scrollbar):
-		show_scrollbars()
-	# Update state
-	update_state()
+	update_scrollbars()
+	update_is_scrolling()
 
 	if debug_mode:
 		queue_redraw()
@@ -584,7 +575,7 @@ func remove_all_children_focus(node: Node) -> void:
 	for child in node.get_children():
 		remove_all_children_focus(child)
 
-func update_state() -> void:
+func update_is_scrolling() -> void:
 	if(
 		(content_dragging and not is_in_deadzone)
 		or any_scroll_bar_dragged()
@@ -593,6 +584,20 @@ func update_state() -> void:
 		is_scrolling = true
 	else:
 		is_scrolling = false
+
+func update_scrollbars() -> void:
+	# Update vertical scroll bar
+	if get_v_scroll_bar().value != -pos.y:
+		get_v_scroll_bar().set_value_no_signal(-pos.y)
+		get_v_scroll_bar().queue_redraw()
+	# Update horizontal scroll bar
+	if get_h_scroll_bar().value != -pos.x:
+		get_h_scroll_bar().set_value_no_signal(-pos.x)
+		get_h_scroll_bar().queue_redraw()
+	
+	# Always show sroll bars when scrolling or mouse is on any scroll bar
+	if hide_scrollbar_over_time and (is_scrolling or mouse_on_scrollbar):
+		show_scrollbars()
 
 func init_drag_temp_data() -> void:
 	# Calculate the size difference between this container and content_node
