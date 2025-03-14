@@ -85,6 +85,8 @@ var h_scrollbar_dragging := false
 var v_scrollbar_dragging := false
 ## When ture, `content_node` follows drag position
 var content_dragging := false
+## When ture, `content_node` has moved by dragging
+var content_dragging_moved := false
 ## Timer for hiding scroll bar
 var scrollbar_hide_timer := Timer.new()
 ## Tween for showing scroll bar
@@ -103,8 +105,6 @@ var drag_temp_data := []
 var is_in_deadzone := false
 ## Whether mouse is on h or v scroll bar
 var mouse_on_scrollbar := false
-## Last velocity from a screen drag
-var last_drag_velocity := Vector2(0,0)
 
 ## If content is being scrolled
 var is_scrolling := false:
@@ -305,7 +305,6 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			content_dragging = false
 			is_in_deadzone = false
-			velocity = last_drag_velocity
 	# Handle input if handle_input is true
 	if handle_input:
 		get_tree().get_root().set_input_as_handled()
@@ -411,7 +410,12 @@ func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float)
 		axis_velocity = snap_result[0]
 		axis_pos = snap_result[1]
 	else:
-		axis_velocity = 0.0
+		# Preserve dragging velocity for 1 frame
+		# in case no movement event while releasing dragging with touch
+		if content_dragging_moved:
+			content_dragging_moved = false
+		else:
+			axis_velocity = 0.0
 	# If using scroll bar dragging, set the content_node's
 	# position by using the scrollbar position
 	if handle_scrollbar_drag():
@@ -532,6 +536,8 @@ func handle_content_dragging() -> void:
 		drag_temp_data[0] = 0.0
 		drag_temp_data[1] = 0.0
 	
+	content_dragging_moved = true
+	
 	var calculate_dest = func(delta: float, damping: float) -> float:
 		if delta >= 0.0:
 			return delta / (1 + delta * damping * 0.00001)
@@ -560,7 +566,6 @@ func handle_content_dragging() -> void:
 			drag_temp_data[1]	# Temp y relative accumulation
 		) + drag_temp_data[3]
 		velocity.y = (y_pos - pos.y) / get_process_delta_time()
-		last_drag_velocity.y = velocity.y
 		pos.y = y_pos
 	if should_scroll_horizontal():
 		var x_pos = calculate_position.call(
@@ -569,7 +574,6 @@ func handle_content_dragging() -> void:
 			drag_temp_data[0]	# Temp x relative accumulation
 		) + drag_temp_data[2]
 		velocity.x = (x_pos - pos.x) / get_process_delta_time()
-		last_drag_velocity.x = velocity.x
 		pos.x = x_pos
 
 func remove_all_children_focus(node: Node) -> void:

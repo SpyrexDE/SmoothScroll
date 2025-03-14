@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://xqy4fhlaf2q3"]
 
-[ext_resource type="Script" path="res://addons/SmoothScroll/SmoothScrollContainer.gd" id="1_su8ig"]
-[ext_resource type="Script" path="res://addons/SmoothScroll/scroll_damper/expo_scroll_damper.gd" id="2_ibjlc"]
+[ext_resource type="Script" uid="uid://bgqglerkcylxx" path="res://addons/SmoothScroll/SmoothScrollContainer.gd" id="1_su8ig"]
+[ext_resource type="Script" uid="uid://b7h0k2h2qwlqv" path="res://addons/SmoothScroll/scroll_damper/expo_scroll_damper.gd" id="2_ibjlc"]
 
 [sub_resource type="GDScript" id="GDScript_xo176"]
 script/source = "extends Control
