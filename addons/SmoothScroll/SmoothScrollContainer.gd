@@ -20,10 +20,10 @@ var wheel_scroll_damper: ScrollDamper = ExpoScrollDamper.new()
 var dragging_scroll_damper: ScrollDamper = ExpoScrollDamper.new()
 ### Allow dragging with mouse or not
 @export
-var drag_with_mouse = true
+var drag_with_mouse := true
 ## Allow dragging with touch or not
 @export
-var drag_with_touch = true
+var drag_with_touch := true
 
 @export_group("Container")
 ## Below this value, snap content to boundary
@@ -158,11 +158,11 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 # Detecting mouse entering and exiting scroll bar
-func _mouse_on_scroll_bar(entered :bool) -> void:
+func _mouse_on_scroll_bar(entered: bool) -> void:
 	mouse_on_scrollbar = entered
 
 # Forwarding scroll inputs from scrollbar
-func _scrollbar_input(event: InputEvent, vertical : bool) -> void:
+func _scrollbar_input(event: InputEvent, vertical: bool) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
 		or event.button_index == MOUSE_BUTTON_WHEEL_UP\
@@ -334,7 +334,7 @@ func _set_hide_scrollbar_over_time(value: bool) -> bool:
 			scrollbar_hide_timer.start(scrollbar_hide_time)
 	return value
 
-func _get(property) -> Variant:
+func _get(property: StringName) -> Variant:
 	match property:
 		"scroll_horizontal":
 			if !content_node: return 0
@@ -345,7 +345,7 @@ func _get(property) -> Variant:
 		_:
 			return null
 
-func _set(property, value) -> bool:
+func _set(property: StringName, value: Variant) -> bool:
 	match property:
 		"scroll_horizontal":
 			if !content_node:
@@ -889,8 +889,8 @@ func show_scrollbars(time: float = scrollbar_fade_in_time) -> void:
 			scrollbar_show_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, time)
 			scrollbar_show_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, time)
 
-## Scroll to position to ensure control visible
-func ensure_control_visible(control : Control) -> void:
+## Scroll to position to ensure the given control node is visible
+func ensure_control_visible(control: Control) -> void:
 	if !content_node: return
 	if !content_node.is_ancestor_of(control): return
 	if !scroll_damper: return
