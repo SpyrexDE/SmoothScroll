@@ -890,7 +890,8 @@ func show_scrollbars(time: float = scrollbar_fade_in_time) -> void:
 			scrollbar_show_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, time)
 
 ## Scroll to position to ensure the given control node is visible
-func ensure_control_visible(control: Control) -> void:
+## Replaces the built-in function `ensure_control_visible`
+func ensure_control_visible_smooth(control: Control) -> void:
 	if !content_node: return
 	if !content_node.is_ancestor_of(control): return
 	if !scroll_damper: return
