@@ -303,7 +303,7 @@ func _gui_input(event: InputEvent) -> void:
 # Scroll to new focused element
 func _on_focus_changed(control: Control) -> void:
 	if follow_focus:
-		self.ensure_control_visible(control)
+		self.ensure_control_visible_smooth(control)
 
 func _draw() -> void:
 	if debug_mode:
