@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://xqy4fhlaf2q3"]
+[gd_scene load_steps=7 format=3 uid="uid://xqy4fhlaf2q3"]
 
 [ext_resource type="Script" uid="uid://bgqglerkcylxx" path="res://addons/SmoothScroll/SmoothScrollContainer.gd" id="1_su8ig"]
 [ext_resource type="Script" uid="uid://b7h0k2h2qwlqv" path="res://addons/SmoothScroll/scroll_damper/expo_scroll_damper.gd" id="2_ibjlc"]
@@ -15,13 +15,6 @@ func _on_h_slider_value_changed(value):
 	Engine.max_fps = $HSlider.value
 	$Label.text = \"FPS: \" + str($HSlider.value)
 "
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n51mc"]
-content_margin_left = 50.0
-content_margin_top = 50.0
-content_margin_right = 50.0
-content_margin_bottom = 50.0
-bg_color = Color(0.6, 0, 1, 1)
 
 [sub_resource type="Resource" id="Resource_lssh0"]
 script = ExtResource("2_ibjlc")
@@ -79,10 +72,9 @@ script = SubResource("GDScript_xo176")
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 259.0
-offset_top = 126.0
-offset_right = 650.0
-offset_bottom = 424.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_n51mc")
+offset_top = 147.0
+offset_right = 649.0
+offset_bottom = 393.0
 follow_focus = true
 script = ExtResource("1_su8ig")
 wheel_scroll_damper = SubResource("Resource_lssh0")
