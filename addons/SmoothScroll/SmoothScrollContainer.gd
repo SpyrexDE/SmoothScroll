@@ -957,13 +957,17 @@ func ensure_control_visible_smooth(control: Control) -> void:
 				/ (get_global_rect().size / size),
 		size_diff
 	)
-	if boundary_dist.x < 0 + follow_focus_margin + content_margins.x:
-		scroll_x_to(pos.x - boundary_dist.x + follow_focus_margin)
-	elif boundary_dist.y > 0 - follow_focus_margin - content_margins.z:
-		scroll_x_to(pos.x - boundary_dist.y - follow_focus_margin)
-	if boundary_dist.z < 0 + follow_focus_margin + content_margins.y:
-		scroll_y_to(pos.y - boundary_dist.z + follow_focus_margin)
-	elif boundary_dist.w > 0 - follow_focus_margin - content_margins.w:
-		scroll_y_to(pos.y - boundary_dist.w - follow_focus_margin)
+	# Left
+	if boundary_dist.x < content_margins.x + follow_focus_margin:
+		scroll_x_to(pos.x - boundary_dist.x + content_margins.x + follow_focus_margin)
+	# Right
+	elif boundary_dist.y > -(follow_focus_margin + content_margins.z):
+		scroll_x_to(pos.x - boundary_dist.y - follow_focus_margin - content_margins.z)
+	# Top
+	if boundary_dist.z < content_margins.y + follow_focus_margin:
+		scroll_y_to(pos.y - boundary_dist.z + content_margins.y + follow_focus_margin)
+	# Bottom
+	elif boundary_dist.w > -(follow_focus_margin + content_margins.w):
+		scroll_y_to(pos.y - boundary_dist.w - follow_focus_margin - content_margins.w)
 
 #endregion
