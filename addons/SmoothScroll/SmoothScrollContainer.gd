@@ -87,6 +87,8 @@ var _initializing_margins := false
 var _base_offset := Vector2.ZERO
 ## True after first margin/layout initialization; gates follow_focus during startup
 var _startup_done := false
+## True if initial margin calculation was skipped due to being hidden
+var _initial_margins_skipped := false
 ## When true, `content_node`'s position is only set by dragging the h scroll bar
 var h_scrollbar_dragging := false
 ## When true, `content_node`'s position is only set by dragging the v scroll bar
@@ -144,8 +146,14 @@ func _ready() -> void:
 	get_h_scroll_bar().mouse_exited.connect(_mouse_on_scroll_bar.bind(false))
 	get_viewport().gui_focus_changed.connect(_on_focus_changed)
 
+	visibility_changed.connect(_visibility_changed)
 	theme_changed.connect(_update_content_margins)
-	call_deferred("_update_content_margins")
+	
+	# Check if we're initially hidden - if so, defer margin calculation until visible
+	if visible:
+		call_deferred("_update_content_margins")
+	else:
+		_initial_margins_skipped = true
 
 	for c in get_children():
 		if not c is ScrollBar:
@@ -337,6 +345,7 @@ func _scrollbar_hide_timer_timeout() -> void:
 # Updates content margins from current StyleBox
 # Captures baseline offset and clears velocity; keeps scroll math in margin-free space
 func _update_content_margins() -> void:
+	print("updated")
 	_initializing_margins = true
 	
 	var style_box = get_theme_stylebox("panel")
@@ -349,15 +358,30 @@ func _update_content_margins() -> void:
 		content_margins = Vector4.ZERO
 	
 	if content_node:
-		# Capture new baseline offset from layout; rendering uses _base_offset + pos
-		_base_offset = content_node.position
-		velocity = Vector2.ZERO
+		if _initial_margins_skipped:
+			_base_offset = Vector2(content_margins.x, content_margins.y)
+			pos = Vector2.ZERO
+		else:
+			var current_scroll_pos = pos
+			# Capture new baseline offset from layout; rendering uses _base_offset + pos
+			_base_offset = content_node.position - current_scroll_pos
+		
+		if not _startup_done:
+			velocity = Vector2.ZERO
 	
 	call_deferred("_end_margin_init")
 
 func _end_margin_init() -> void:
 	_initializing_margins = false
 	_startup_done = true
+	_initial_margins_skipped = false
+
+func _visibility_changed() -> void:
+	if visible and content_node:
+		if _initial_margins_skipped:
+			call_deferred("_update_content_margins")
+		elif _startup_done:
+			call_deferred("_update_content_margins")
 
 func _set_hide_scrollbar_over_time(value: bool) -> bool:
 	if value == false:
