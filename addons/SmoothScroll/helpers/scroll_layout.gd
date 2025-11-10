@@ -1,4 +1,5 @@
 class_name ScrollLayout
+extends RefCounted
 ## Static utility class for [SmoothScrollContainer] layout and boundary calculations.
 ##
 ## Provides functions to calculate container sizes, content dimensions,

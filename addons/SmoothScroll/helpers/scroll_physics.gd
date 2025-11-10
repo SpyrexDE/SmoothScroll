@@ -1,4 +1,5 @@
 class_name ScrollPhysics
+extends RefCounted
 ## Static utility class for [SmoothScrollContainer] physics calculations.
 ##
 ## This will handle overdrag forces, snapping to boundaries, and velocity calculations.

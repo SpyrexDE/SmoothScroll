@@ -1,4 +1,5 @@
 class_name ScrollDebugger
+extends RefCounted
 ## Static utility class for [SmoothScrollContainer] debug visualization.
 ##
 ## This class will progvide debug drawing functions for dev use.
