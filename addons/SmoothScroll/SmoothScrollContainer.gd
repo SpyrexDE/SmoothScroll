@@ -1,86 +1,96 @@
-## Smooth scroll functionality for ScrollContainer
+@tool
+class_name SmoothScrollContainer
+extends ScrollContainer
+## Smooth scroll functionality for ScrollContainer.
 ##
 ## Applies velocity based momentum and "overdrag"
-## functionality to a ScrollContainer
-@tool
-extends ScrollContainer
-class_name SmoothScrollContainer
+## functionality to a ScrollContainer.
 
+
+#region Variables
+## Last type of input used to scroll
+enum SCROLL_TYPE {
+	WHEEL, ## Mouse wheel scrolling
+	BAR,   ## Scrollbar dragging
+	DRAG   ## Content dragging
+}
+
+#region Exported Variables
 @export_group("Mouse Wheel")
 ## Drag impact for one scroll input
-@export_range(0, 10, 0.01, "or_greater", "hide_slider")
-var speed := 1000.0
+@export_range(0.0, 10.0, 0.01, "or_greater", "hide_slider") var speed := 1000.0
 ## ScrollDamper for wheel scrolling
-@export
-var wheel_scroll_damper: ScrollDamper = ExpoScrollDamper.new()
+@export var wheel_scroll_damper := ExpoScrollDamper.new()
 
 @export_group("Dragging")
 ## ScrollDamper for dragging
-@export
-var dragging_scroll_damper: ScrollDamper = ExpoScrollDamper.new()
-### Allow dragging with mouse or not
-@export
-var drag_with_mouse := true
+@export var dragging_scroll_damper := ExpoScrollDamper.new()
+## Allow dragging with mouse or not
+@export var drag_with_mouse := true
 ## Allow dragging with touch or not
-@export
-var drag_with_touch := true
+@export var drag_with_touch := true
 
 @export_group("Container")
 ## Below this value, snap content to boundary
-@export
-var just_snap_under := 0.4
+@export var just_snap_under := 0.4
 ## Margin of the currently focused element
-@export_range(0, 50)
-var follow_focus_margin := 20
+@export_range(0, 50) var follow_focus_margin := 20
 ## Makes the container scrollable vertically
-@export
-var allow_vertical_scroll := true
+@export var allow_vertical_scroll := true
 ## Makes the container scrollable horizontally
-@export
-var allow_horizontal_scroll := true
+@export var allow_horizontal_scroll := true
 ## Makes the container only scrollable where the content has overflow
-@export
-var auto_allow_scroll := true
+@export var auto_allow_scroll := true
 ## Whether the content of this container should be allowed to overshoot at the ends
 ## before interpolating back to its bounds
-@export
-var allow_overdragging := true
+@export var allow_overdragging := true
 
 @export_group("Scroll Bar")
 ## Hides scrollbar as long as not hovered or interacted with
-@export
-var hide_scrollbar_over_time := false:
+@export var hide_scrollbar_over_time := false:
 	set(val): hide_scrollbar_over_time = _set_hide_scrollbar_over_time(val)
 ## Time after scrollbar starts to fade out when 'hide_scrollbar_over_time' is true
-@export
-var scrollbar_hide_time := 5.0
+@export var scrollbar_hide_time := 5.0
 ## Fadein time for scrollbar when 'hide_scrollbar_over_time' is true
-@export
-var scrollbar_fade_in_time := 0.2
+@export var scrollbar_fade_in_time := 0.2
 ## Fadeout time for scrollbar when 'hide_scrollbar_over_time' is true
-@export
-var scrollbar_fade_out_time := 0.5
+@export var scrollbar_fade_out_time := 0.5
 
 @export_group("Input")
 ## If true sets the input event as handled with set_input_as_handled()
-@export
-var handle_input := true
+@export var handle_input := true
 
 @export_group("Debug")
 ## Adds debug information
-@export
-var debug_mode := false
+@export var debug_mode := false
+#endregion
 
+#region Public Variables
 ## Current velocity of the `content_node`
 var velocity := Vector2(0,0)
 ## Control node to move when scrolling
 var content_node: Control
 ## Current position of `content_node`
 var pos := Vector2(0, 0)
-## Current ScrollDamper to use, recording to last input type
+## Current ScrollDamper to use, according to last input type
 var scroll_damper: ScrollDamper
-## StyleBox content margins
-var content_margins := Vector4(0.0, 0.0, 0.0, 0.0) # left, top, right, bottom
+## If content is being scrolled
+var is_scrolling := false:
+	set(val):
+		if is_scrolling != val:
+			if val:
+				emit_signal("scroll_started")
+			else:
+				emit_signal("scroll_ended")
+		is_scrolling = val
+## Last type of input used to scroll
+var last_scroll_type: SCROLL_TYPE
+
+#endregion
+
+#region Private Variables
+## StyleBox content margins (left, top, right, bottom)
+var content_margins := Vector4.ZERO
 ## True while margins/layout are being (re)applied; disables scrolling
 var _initializing_margins := false
 ## Baseline layout offset applied by StyleBox/content
@@ -93,9 +103,9 @@ var _initial_margins_skipped := false
 var h_scrollbar_dragging := false
 ## When true, `content_node`'s position is only set by dragging the v scroll bar
 var v_scrollbar_dragging := false
-## When ture, `content_node` follows drag position
+## When true, `content_node` follows drag position
 var content_dragging := false
-## When ture, `content_node` has moved by dragging
+## When true, `content_node` has moved by dragging
 var content_dragging_moved := false
 ## Timer for hiding scroll bar
 var scrollbar_hide_timer := Timer.new()
@@ -111,27 +121,20 @@ var scroll_y_to_tween: Tween
 ## [2,3] Position where dragging starts[br]
 ## [4,5,6,7] Left_distance, right_distance, top_distance, bottom_distance
 var drag_temp_data := []
-## Whether touch point is in deadzone.
+## Whether touch point is in deadzone
 var is_in_deadzone := false
 ## Whether mouse is on h or v scroll bar
 var mouse_on_scrollbar := false
+## Debug gradient for visual debugging
+var debug_gradient := Gradient.new()
+#endregion
 
-## If content is being scrolled
-var is_scrolling := false:
-	set(val):
-		if is_scrolling != val:
-			if val:
-				emit_signal("scroll_started")
-			else:
-				emit_signal("scroll_ended")
-		is_scrolling = val
+#endregion
 
-## Last type of input used to scroll
-enum SCROLL_TYPE {WHEEL, BAR, DRAG}
-var last_scroll_type: SCROLL_TYPE
 
-#region Virtual Functions
-
+#region Built-in Virtual Methods
+## Called when the node enters the scene tree for the first time.
+## Sets up scrollbars, timers, and initial configuration.
 func _ready() -> void:
 	if debug_mode:
 		setup_debug_drawing()
@@ -169,6 +172,8 @@ func _ready() -> void:
 		scrollbar_hide_timer.start(scrollbar_hide_time)
 	get_tree().node_added.connect(_on_node_added)
 
+
+## Called every frame. Updates scroll position, velocity, and scrollbar state.
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint(): return
 	if _initializing_margins: return
@@ -180,11 +185,14 @@ func _process(delta: float) -> void:
 	if debug_mode:
 		queue_redraw()
 
-# Detecting mouse entering and exiting scroll bar
+## Detects mouse entering and exiting scroll bar areas.
+## [param entered] - True if mouse entered, false if exited
 func _mouse_on_scroll_bar(entered: bool) -> void:
 	mouse_on_scrollbar = entered
 
-# Forwarding scroll inputs from scrollbar
+## Forwards scroll inputs from scrollbar to the main input handler.
+## [param event] - The input event to process
+## [param vertical] - True for vertical scrollbar, false for horizontal
 func _scrollbar_input(event: InputEvent, vertical: bool) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN\
@@ -225,6 +233,8 @@ func _scrollbar_input(event: InputEvent, vertical: bool) -> void:
 			else:
 				h_scrollbar_dragging = false
 
+## Handles all GUI input events. Will be used for
+## scrolling, dragging, and gestures.
 func _gui_input(event: InputEvent) -> void:
 	# Show scroll bars when mouse moves
 	if hide_scrollbar_over_time and event is InputEventMouseMotion:
@@ -323,27 +333,30 @@ func _gui_input(event: InputEvent) -> void:
 	if handle_input:
 		get_tree().get_root().set_input_as_handled()
 
-# Scroll to new focused element
+## Scrolls to newly focused element when focus changes.
+## [param control] - The control that received focus
 func _on_focus_changed(control: Control) -> void:
 	if follow_focus and _startup_done:
 		self.ensure_control_visible_smooth(control)
 
+## Draws debug information if debug mode is enabled
 func _draw() -> void:
-	if debug_mode:
-		draw_debug()
+	if debug_mode: draw_debug()
 
-# Sets default mouse filter for SmoothScroll children to MOUSE_FILTER_PASS
+## Sets default mouse filter for SmoothScroll children to MOUSE_FILTER_PASS.
+## [param node] - The node that was added to the tree
 func _on_node_added(node: Node) -> void:
 	if node is Control and Engine.is_editor_hint():
 		if is_ancestor_of(node):
 			node.mouse_filter = Control.MOUSE_FILTER_PASS
 
+## Called when the scrollbar hide timer times out. Hides scrollbars if not being dragged.
 func _scrollbar_hide_timer_timeout() -> void:
 	if !any_scroll_bar_dragged():
 		hide_scrollbars()
 
-# Updates content margins from current StyleBox
-# Captures baseline offset and clears velocity; keeps scroll math in margin-free space
+## Updates content margins from current StyleBox.
+## Captures baseline offset and clears velocity; keeps scroll math in margin-free space.
 func _update_content_margins() -> void:
 	print("updated")
 	_initializing_margins = true
@@ -371,11 +384,13 @@ func _update_content_margins() -> void:
 	
 	call_deferred("_end_margin_init")
 
+## Finalizes margin initialization by resetting the initializing flag
 func _end_margin_init() -> void:
 	_initializing_margins = false
 	_startup_done = true
 	_initial_margins_skipped = false
 
+## Called when visibility changes. Updates margins if needed.
 func _visibility_changed() -> void:
 	if visible and content_node:
 		if _initial_margins_skipped:
@@ -383,6 +398,8 @@ func _visibility_changed() -> void:
 		elif _startup_done:
 			call_deferred("_update_content_margins")
 
+## Setter for hide_scrollbar_over_time. Manages scrollbar visibility behavior.
+## [param value] - Whether to hide scrollbars over time
 func _set_hide_scrollbar_over_time(value: bool) -> bool:
 	if value == false:
 		if scrollbar_hide_timer != null:
@@ -398,6 +415,8 @@ func _set_hide_scrollbar_over_time(value: bool) -> bool:
 			scrollbar_hide_timer.start(scrollbar_hide_time)
 	return value
 
+## Getter for scroll_horizontal and scroll_vertical properties.
+## [param property] - The property name being accessed
 func _get(property: StringName) -> Variant:
 	match property:
 		"scroll_horizontal":
@@ -409,6 +428,9 @@ func _get(property: StringName) -> Variant:
 		_:
 			return null
 
+## Setter for scroll_horizontal and scroll_vertical properties.
+## [param property] - The property name being set
+## [param value] - The value to set
 func _set(property: StringName, value: Variant) -> bool:
 	match property:
 		"scroll_horizontal":
@@ -446,6 +468,11 @@ func _set(property: StringName, value: Variant) -> bool:
 
 #region Scrolling Logic
 
+## Handles scrolling along a single axis.
+## [param vertical] - True for vertical scrolling, false for horizontal
+## [param axis_velocity] - Current velocity on this axis
+## [param axis_pos] - Current position on this axis
+## [param delta] - Time elapsed since last frame
 func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float):
 	# If no scroll needed, don't apply forces
 	if vertical:
@@ -503,6 +530,11 @@ func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float)
 		pos.x = axis_pos
 		velocity.x = axis_velocity
 
+## Applies counterforces when content is dragged beyond boundaries.
+## [param vertical] - True for vertical scrolling, false for horizontal
+## [param axis_velocity] - Current velocity on this axis
+## [param axis_pos] - Current position on this axis
+## [param delta] - Time elapsed since last frame
 func handle_overdrag(vertical: bool, axis_velocity: float, axis_pos: float, delta: float) -> float:
 	if !scroll_damper: return 0.0
 	# Calculate the size difference between this container and content_node
@@ -539,7 +571,10 @@ func handle_overdrag(vertical: bool, axis_velocity: float, axis_pos: float, delt
 	
 	return axis_velocity
 
-# Snap to boundary if close enough in next frame
+## Snaps content to boundary if velocity and distance are both below threshold.
+## [param vertical] - True for vertical scrolling, false for horizontal
+## [param axis_velocity] - Current velocity on this axis
+## [param axis_pos] - Current position on this axis
 func snap(vertical: bool, axis_velocity: float, axis_pos: float) -> Array:
 	# Calculate the size difference between this container and content_node
 	var size_diff = get_child_size_y_diff(content_node, true) \
@@ -567,6 +602,7 @@ func snap(vertical: bool, axis_velocity: float, axis_pos: float) -> Array:
 	
 	return [axis_velocity, axis_pos]
 
+## Handles scrollbar drag input and updates content position.
 ## Returns true when scrollbar was dragged
 func handle_scrollbar_drag() -> bool:
 	if h_scrollbar_dragging:
@@ -582,6 +618,7 @@ func handle_scrollbar_drag() -> bool:
 		return true
 	return false
 
+## Handles content dragging with overdrag when dragged beyond boundaries
 func handle_content_dragging() -> void:
 	if !dragging_scroll_damper: return
 	
@@ -637,6 +674,8 @@ func handle_content_dragging() -> void:
 		pos.x = x_pos
 		content_node.position.x = _base_offset.x + x_pos
 
+## Recursively removes focus from a node and all its children.
+## [param node] - The node to remove focus from
 func remove_all_children_focus(node: Node) -> void:
 	if node is Control:
 		var control = node as Control
@@ -645,6 +684,7 @@ func remove_all_children_focus(node: Node) -> void:
 	for child in node.get_children():
 		remove_all_children_focus(child)
 
+## Updates the is_scrolling state based on current dragging and velocity
 func update_is_scrolling() -> void:
 	if(
 		(content_dragging and not is_in_deadzone)
@@ -655,6 +695,7 @@ func update_is_scrolling() -> void:
 	else:
 		is_scrolling = false
 
+## Updates scrollbar positions to match current scroll position and shows them if needed
 func update_scrollbars() -> void:
 	# Update vertical scroll bar
 	if get_v_scroll_bar().value != -pos.y:
@@ -669,6 +710,7 @@ func update_scrollbars() -> void:
 	if hide_scrollbar_over_time and (is_scrolling or mouse_on_scrollbar):
 		show_scrollbars()
 
+## Initializes temporary drag data for tracking drag state and boundaries
 func init_drag_temp_data() -> void:
 	# Calculate the size difference between this container and content_node
 	var content_node_size_diff = get_child_size_diff(content_node, true, true)
@@ -688,7 +730,7 @@ func init_drag_temp_data() -> void:
 		content_node_boundary_dist.w,
 	]
 
-# Get container size x without v scroll bar 's width
+## Gets container size x without vertical scrollbar's width
 func get_spare_size_x() -> float:
 	var size_x = size.x
 	if get_v_scroll_bar().visible:
@@ -696,7 +738,7 @@ func get_spare_size_x() -> float:
 	size_x -= content_margins.x + content_margins.z
 	return max(size_x, 0.0)
 
-# Get container size y without h scroll bar 's height
+## Gets container size y without horizontal scrollbar's height
 func get_spare_size_y() -> float:
 	var size_y = size.y
 	if get_h_scroll_bar().visible:
@@ -705,11 +747,13 @@ func get_spare_size_y() -> float:
 	var result = max(size_y, 0.0)
 	return result
 
-# Get container size without scroll bars' size
+## Gets container size without scrollbar sizes
 func get_spare_size() -> Vector2:
 	return Vector2(get_spare_size_x(), get_spare_size_y())
 
-# Calculate the size x difference between this container and child node
+## Calculates the size x difference between this container and child node.
+## [param child] - The child control to measure
+## [param clamp] - Whether to clamp child size to minimum of container size
 func get_child_size_x_diff(child: Control, clamp: bool) -> float:
 	var child_size_x = child.size.x * child.scale.x
 	# Falsify the size of the child node to avoid errors 
@@ -718,7 +762,9 @@ func get_child_size_x_diff(child: Control, clamp: bool) -> float:
 		child_size_x = max(child_size_x, get_spare_size_x())
 	return child_size_x - get_spare_size_x()
 
-# Calculate the size y difference between this container and child node
+## Calculates the size y difference between this container and child node.
+## [param child] - The child control to measure
+## [param clamp] - Whether to clamp child size to minimum of container size
 func get_child_size_y_diff(child: Control, clamp: bool) -> float:
 	var child_size_y = child.size.y * child.scale.y
 	var spare_size_y = get_spare_size_y()
@@ -729,30 +775,43 @@ func get_child_size_y_diff(child: Control, clamp: bool) -> float:
 	var result = child_size_y - spare_size_y
 	return result
 
-# Calculate the size difference between this container and child node
+## Calculates the size difference between this container and child node.
+## [param child] - The child control to measure
+## [param clamp_x] - Whether to clamp child x size to minimum of container size
+## [param clamp_y] - Whether to clamp child y size to minimum of container size
 func get_child_size_diff(child: Control, clamp_x: bool, clamp_y: bool) -> Vector2:
 	return Vector2(
 		get_child_size_x_diff(child, clamp_x),
 		get_child_size_y_diff(child, clamp_y)
 	)
 
-# Calculate distance to left
+## Calculates distance to left boundary.
+## [param child_pos_x] - Current x position of child
+## [param child_size_diff_x] - Size difference between container and child on x axis
 func get_child_left_dist(child_pos_x: float, child_size_diff_x: float) -> float:
 	return child_pos_x
 
-# Calculate distance to right
+## Calculates distance to right boundary.
+## [param child_pos_x] - Current x position of child
+## [param child_size_diff_x] - Size difference between container and child on x axis
 func get_child_right_dist(child_pos_x: float, child_size_diff_x: float) -> float:
 	return child_pos_x + child_size_diff_x
 
-# Calculate distance to top
+## Calculates distance to top boundary.
+## [param child_pos_y] - Current y position of child
+## [param child_size_diff_y] - Size difference between container and child on y axis
 func get_child_top_dist(child_pos_y: float, child_size_diff_y: float) -> float:
 	return child_pos_y
 
-# Calculate distance to bottom
+## Calculates distance to bottom boundary.
+## [param child_pos_y] - Current y position of child
+## [param child_size_diff_y] - Size difference between container and child on y axis
 func get_child_bottom_dist(child_pos_y: float, child_size_diff_y: float) -> float:
 	return child_pos_y + child_size_diff_y
 
-# Calculate distance to left, right, top and bottom
+## Calculates distance to all four boundaries (left, right, top, bottom).
+## [param child_pos] - Current position of child
+## [param child_size_diff] - Size difference between container and child
 func get_child_boundary_dist(child_pos: Vector2, child_size_diff: Vector2) -> Vector4:
 	return Vector4(
 		get_child_left_dist(child_pos.x, child_size_diff.x),
@@ -761,12 +820,15 @@ func get_child_boundary_dist(child_pos: Vector2, child_size_diff: Vector2) -> Ve
 		get_child_bottom_dist(child_pos.y, child_size_diff.y),
 	)
 
+## Kills the horizontal scroll tween if it exists
 func kill_scroll_x_to_tween() -> void:
 	if scroll_x_to_tween: scroll_x_to_tween.kill()
 
+## Kills the vertical scroll tween if it exists
 func kill_scroll_y_to_tween() -> void:
 	if scroll_y_to_tween: scroll_y_to_tween.kill()
 
+## Kills both horizontal and vertical scroll tweens
 func kill_scroll_to_tweens() -> void:
 	kill_scroll_x_to_tween()
 	kill_scroll_y_to_tween()
@@ -775,12 +837,12 @@ func kill_scroll_to_tweens() -> void:
 
 #region Debug Drawing
 
-var debug_gradient := Gradient.new()
-
+## Sets up the gradient for debug visualization
 func setup_debug_drawing() -> void:
 	debug_gradient.set_color(0.0, Color.GREEN)
 	debug_gradient.set_color(1.0, Color.RED)
 
+## Draws debug visualization showing overdrag distances and velocity
 func draw_debug() -> void:
 	# Calculate the size difference between this container and content_node
 	var size_diff = get_child_size_diff(content_node, false, false)
@@ -808,9 +870,11 @@ func draw_debug() -> void:
 
 #endregion
 
-#region API Functions
+#region Public API Functions
 
-## Scrolls to specific x position
+## Scrolls to specific x position with a tween animation.
+## [param x_pos] - Target x position to scroll to
+## [param duration] - Animation duration in seconds.
 func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 	if not should_scroll_horizontal(): return
 	if content_dragging: return
@@ -822,7 +886,9 @@ func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 	var tweener = scroll_x_to_tween.tween_property(self, "pos:x", x_pos, duration)
 	tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
-## Scrolls to specific y position
+## Scrolls to specific y position with a tween animation.
+## [param y_pos] - Target y position to scroll to
+## [param duration] - Animation duration in seconds.
 func scroll_y_to(y_pos: float, duration := 0.5) -> void:
 	if not should_scroll_vertical(): return
 	if content_dragging: return
@@ -834,72 +900,90 @@ func scroll_y_to(y_pos: float, duration := 0.5) -> void:
 	var tweener = scroll_y_to_tween.tween_property(self, "pos:y", y_pos, duration)
 	tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
-## Scrolls up a page
+## Scrolls up one page with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_page_up(duration := 0.5) -> void:
 	var destination = pos.y + get_spare_size_y()
 	scroll_y_to(destination, duration)
 
-## Scrolls down a page
+## Scrolls down one page with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_page_down(duration := 0.5) -> void:
 	var destination = pos.y - get_spare_size_y()
 	scroll_y_to(destination, duration)
 
-## Scrolls left a page
+## Scrolls left one page with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_page_left(duration := 0.5) -> void:
 	var destination = pos.x + get_spare_size_x()
 	scroll_x_to(destination, duration)
 
-## Scrolls right a page
+## Scrolls right one page with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_page_right(duration := 0.5) -> void:
 	var destination = pos.x - get_spare_size_x()
 	scroll_x_to(destination, duration)
 
-## Adds velocity to the vertical scroll
+## Adds velocity to the vertical scroll for momentum-based scrolling.
+## [param amount] - Amount of velocity to add (positive = scroll up, negative = scroll down)
 func scroll_vertically(amount: float) -> void:
 	velocity.y -= amount
 
-## Adds velocity to the horizontal scroll
+## Adds velocity to the horizontal scroll for momentum-based scrolling.
+## [param amount] - Amount of velocity to add (positive = scroll left, negative = scroll right)
 func scroll_horizontally(amount: float) -> void:
 	velocity.x -= amount
 
-## Scrolls to top
+## Scrolls to the top with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_to_top(duration := 0.5) -> void:
 	scroll_y_to(0.0, duration)
 
-## Scrolls to bottom
+## Scrolls to the bottom with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_to_bottom(duration := 0.5) -> void:
 	scroll_y_to(get_spare_size_y() - content_node.size.y, duration)
 
-## Scrolls to left
+## Scrolls to the leftmost position with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_to_left(duration := 0.5) -> void:
 	scroll_x_to(0.0, duration)
 
-## Scrolls to right
+## Scrolls to the rightmost position with a tween animation.
+## [param duration] - Animation duration in seconds.
 func scroll_to_right(duration := 0.5) -> void:
 	scroll_x_to(get_spare_size_x() - content_node.size.x, duration)
 
+## Checks if content is currently beyond the top boundary.
+## [param y_pos] - Y position to check.
 func is_outside_top_boundary(y_pos: float = pos.y) -> bool:
 	var size_y_diff = get_child_size_y_diff(content_node,true)
 	var top_dist = get_child_top_dist(y_pos, size_y_diff)
 	var result = top_dist > 0.0
 	return result
 
+## Checks if content is currently beyond the bottom boundary.
+## [param y_pos] - Y position to check.
 func is_outside_bottom_boundary(y_pos: float = pos.y) -> bool:
 	var size_y_diff = get_child_size_y_diff(content_node,true)
 	var bottom_dist = get_child_bottom_dist(y_pos, size_y_diff)
 	return bottom_dist < 0.0
 
+## Checks if content is currently beyond the left boundary.
+## [param x_pos] - X position to check.
 func is_outside_left_boundary(x_pos: float = pos.x) -> bool:
 	var size_x_diff = get_child_size_x_diff(content_node,true)
 	var left_dist = get_child_left_dist(x_pos, size_x_diff)
 	return left_dist > 0.0
 
+## Checks if content is currently beyond the right boundary.
+## [param x_pos] - X position to check.
 func is_outside_right_boundary(x_pos: float = pos.x) -> bool:
 	var size_x_diff = get_child_size_x_diff(content_node,true)
 	var right_dist = get_child_right_dist(x_pos, size_x_diff)
 	return right_dist < 0.0
 
-## Returns true if any scroll bar is being dragged
+## Returns true if any scrollbar is currently being dragged
 func any_scroll_bar_dragged() -> bool:
 	return h_scrollbar_dragging or v_scrollbar_dragging
 
@@ -926,8 +1010,8 @@ func should_scroll_horizontal() -> bool:
 	else:
 		return true
 
-## Fades out scrollbars within given [param time].[br]
-## Default for [param time] is current [member scrollbar_fade_out_time]
+## Fades out scrollbars within given time.
+## [param time] - Fade out duration.
 func hide_scrollbars(time: float = scrollbar_fade_out_time) -> void:
 	# Kill scrollbar_show_tween to avoid animation conflict
 	if scrollbar_show_tween != null and scrollbar_show_tween.is_valid():
@@ -945,8 +1029,8 @@ func hide_scrollbars(time: float = scrollbar_fade_out_time) -> void:
 			scrollbar_hide_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.TRANSPARENT, time)
 			scrollbar_hide_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.TRANSPARENT, time)
 
-## Fades in scrollbars within given [param time].[br]
-## Default for [param time] is current [member scrollbar_fade_in_time]
+## Fades in scrollbars within given time.
+## [param time] - Fade in duration (default: scrollbar_fade_in_time)
 func show_scrollbars(time: float = scrollbar_fade_in_time) -> void:
 	# Restart timer
 	scrollbar_hide_timer.start(scrollbar_hide_time)
@@ -966,8 +1050,9 @@ func show_scrollbars(time: float = scrollbar_fade_in_time) -> void:
 			scrollbar_show_tween.tween_property(get_v_scroll_bar(), 'modulate', Color.WHITE, time)
 			scrollbar_show_tween.tween_property(get_h_scroll_bar(), 'modulate', Color.WHITE, time)
 
-## Scroll to position to ensure the given control node is visible
-## Replaces the built-in function `ensure_control_visible`
+## Smoothly scrolls to ensure the given control node is visible with animation.
+## Replaces the built-in function ensure_control_visible.
+## [param control] - The control to make visible
 func ensure_control_visible_smooth(control: Control) -> void:
 	if !content_node: return
 	if !content_node.is_ancestor_of(control): return
