@@ -19,38 +19,28 @@ var _attract_factor: float = 400.0: set = _set_attract_factor
 #endregion
 
 
-## Abstract method. Calculates velocity at a given time.
-## [param time] - Time value for velocity calculation
-## Returns the velocity at the specified time
+## Abstract method. Calculates velocity at the given [param time] value.
 func _calculate_velocity_by_time(time: float) -> float:
 	return 0.0
 
 
-## Abstract method. Calculates time needed to reach a given velocity.
-## [param velocity] - Target velocity
-## Returns the time needed to reach the velocity
+## Abstract method. Calculates time needed to reach the given [param velocity].
 func _calculate_time_by_velocity(velocity: float) -> float:
 	return 0.0
 
 
-## Abstract method. Calculates offset traveled at a given time.
-## [param time] - Time value for offset calculation
-## Returns the offset at the specified time
+## Abstract method. Calculates offset traveled at the given [param time] value.
 func _calculate_offset_by_time(time: float) -> float:
 	return 0.0
 
 
-## Abstract method. Calculates time needed to travel a given offset.
-## [param offset] - Target offset distance
-## Returns the time needed to reach the offset
+## Abstract method. Calculates time needed to travel the given [param offset] distance.
 func _calculate_time_by_offset(offset: float) -> float:
 	return 0.0
 
 
-## Calculates the velocity needed to reach a destination.
-## [param from] - Starting position
-## [param to] - Target position
-## Returns the required velocity to reach the target
+## Calculates the velocity needed to reach a destination. [br]
+## Computes required velocity to move from [param from] position to [param to] position.
 func _calculate_velocity_to_dest(from: float, to: float) -> float:
 	var dist: float = to - from
 	var time: float = _calculate_time_by_offset(abs(dist))
@@ -58,27 +48,21 @@ func _calculate_velocity_to_dest(from: float, to: float) -> float:
 	return vel
 
 
-## Calculates the next velocity after a time step.
-## [param present_time] - Current time in the damping curve
-## [param delta_time] - Time step to advance
-## Returns the velocity at the next time step
+## Calculates the next velocity after advancing time. [br]
+## Returns velocity at [param present_time] minus [param delta_time].
 func _calculate_next_velocity(present_time: float, delta_time: float) -> float:
 	return _calculate_velocity_by_time(present_time - delta_time)
 
 
-## Calculates the position change over a time step.
-## [param present_time] - Current time in the damping curve
-## [param delta_time] - Time step to advance
-## Returns the offset traveled during the time step
+## Calculates the position change over a time step. [br]
+## Returns offset difference between [param present_time] and [param present_time] minus [param delta_time].
 func _calculate_next_offset(present_time: float, delta_time: float) -> float:
 	return _calculate_offset_by_time(present_time) \
 		 - _calculate_offset_by_time(present_time - delta_time)
 
 
-## Applies damping to velocity and calculates position change.
-## [param velocity] - Current velocity
-## [param delta_time] - Time elapsed since last frame
-## Returns array [next_velocity, position_change]
+## Applies damping to [param velocity] over [param delta_time]. [br]
+## Returns array: [code][next_velocity, position_change][/code].
 func slide(velocity: float, delta_time: float) -> Array:
 	var present_time: float = _calculate_time_by_velocity(velocity)
 	return [
@@ -87,13 +71,9 @@ func slide(velocity: float, delta_time: float) -> Array:
 	]
 
 
-## Applies attraction force toward a destination.
-## Used for pulling content back to bounds when overdragging.
-## [param from] - Current position
-## [param to] - Target position
-## [param velocity] - Current velocity
-## [param delta_time] - Time elapsed since last frame
-## Returns the modified velocity after applying attraction
+## Applies attraction force toward a destination when overdragging. [br]
+## Pulls content from [param from] position toward [param to] position, modifying [param velocity]
+## over [param delta_time]. Returns the modified velocity.
 func attract(from: float, to: float, velocity: float, delta_time: float) -> float:
 	var dist: float = to - from
 	var target_vel: float = _calculate_velocity_to_dest(from, to)

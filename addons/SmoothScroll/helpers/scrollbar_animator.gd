@@ -28,8 +28,7 @@ var fade_out_time: float = 0.5
 #endregion
 
 
-## Initializes the animator with a container reference.
-## [param container] - The ScrollContainer to animate scrollbars for
+## Initializes the animator with a reference to the [param container].
 func _init(container: ScrollContainer) -> void:
 	_container = container
 	_hide_timer = Timer.new()
@@ -50,15 +49,14 @@ func stop_hide_timer() -> void:
 		_hide_timer.stop()
 
 
-## Checks if either scrollbar is being dragged.
-## [param h_scrollbar_dragging] - Is horizontal scrollbar being dragged
-## [param v_scrollbar_dragging] - Is vertical scrollbar being dragged
+## Checks whether scrollbars should hide based on drag states. [br]
+## Returns [code]true[/code] when neither [param h_scrollbar_dragging] nor [param v_scrollbar_dragging] is active.
 func should_hide(h_scrollbar_dragging: bool, v_scrollbar_dragging: bool) -> bool:
 	return not h_scrollbar_dragging and not v_scrollbar_dragging
 
 
-## Fades in scrollbars within given time.
-## [param time] - Fade in duration (optional, defaults to fade_in_time)
+## Fades in scrollbars over the specified [param time] duration. [br]
+## When [param time] is negative, uses [member fade_in_time] instead.
 func show_scrollbars(time: float = -1.0) -> void:
 	if time < 0.0:
 		time = fade_in_time
@@ -84,8 +82,8 @@ func show_scrollbars(time: float = -1.0) -> void:
 		_show_tween.tween_property(h_scroll_bar, "modulate", Color.WHITE, time)
 
 
-## Fades out scrollbars within given time.
-## [param time] - Fade out duration (optional, defaults to fade_out_time)
+## Fades out scrollbars over the specified [param time] duration. [br]
+## When [param time] is negative, uses [member fade_out_time] instead.
 func hide_scrollbars(time: float = -1.0) -> void:
 	if time < 0.0:
 		time = fade_out_time
@@ -127,9 +125,7 @@ func cleanup() -> void:
 	if _hide_timer:	_hide_timer.queue_free()
 
 
-## Animates horizontal scroll to a specific position.
-## [param target_pos] - Target X position for content
-## [param duration] - Animation duration in seconds
+## Animates horizontal scroll to [param target_pos] with the specified [param duration].
 func scroll_x_to(target_pos: float, duration: float = 0.5) -> void:
 	if _scroll_x_tween and _scroll_x_tween.is_valid():
 		_scroll_x_tween.kill()
@@ -144,9 +140,7 @@ func scroll_x_to(target_pos: float, duration: float = 0.5) -> void:
 	tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
 
-## Animates vertical scroll to a specific position.
-## [param target_pos] - Target Y position for content
-## [param duration] - Animation duration in seconds
+## Animates vertical scroll to [param target_pos] with the specified [param duration].
 func scroll_y_to(target_pos: float, duration: float = 0.5) -> void:
 	if _scroll_y_tween and _scroll_y_tween.is_valid():
 		_scroll_y_tween.kill()

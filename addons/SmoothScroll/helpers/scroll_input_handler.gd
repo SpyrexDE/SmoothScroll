@@ -33,14 +33,13 @@ var drag_temp_data: Array = []
 #endregion
 
 
-## Initializes the input handler with a container reference.
-## [param container] - The SmoothScrollContainer to handle input for
+## Initializes the input handler with a reference to the [param container].
 func _init(container: SmoothScrollContainer) -> void:
 	_container = container
 
 
-## Processes GUI input events for scrolling.
-## [param event] - The input event to process
+## Processes GUI input events for scrolling. [br]
+## Handles mouse wheel, dragging, pan gestures, and touch events from [param event].
 func process_gui_input(event: InputEvent) -> void:
 	# Show scrollbars on mouse motion
 	if _container.hide_scrollbar_over_time and event is InputEventMouseMotion:
@@ -68,9 +67,8 @@ func process_gui_input(event: InputEvent) -> void:
 		_container.get_tree().get_root().set_input_as_handled()
 
 
-## Processes scrollbar input events.
-## [param event] - The input event to process
-## [param vertical] - True for vertical scrollbar, false for horizontal
+## Processes scrollbar input events from [param event]. [br]
+## Handles both [param vertical] and horizontal scrollbar interactions.
 func process_scrollbar_input(event: InputEvent, vertical: bool) -> void:
 	if event is InputEventMouseButton:
 		# Forward wheel events to main input handler
@@ -90,8 +88,7 @@ func process_scrollbar_input(event: InputEvent, vertical: bool) -> void:
 		_handle_scrollbar_touch(event, vertical)
 
 
-## Called when mouse enters/exits scrollbar area.
-## [param entered] - True if mouse entered, false if exited
+## Called when mouse enters or exits scrollbar area based on [param entered].
 func on_mouse_scrollbar(entered: bool) -> void:
 	mouse_on_scrollbar = entered
 
@@ -101,7 +98,7 @@ func any_scrollbar_dragging() -> bool:
 	return h_scrollbar_dragging or v_scrollbar_dragging
 
 
-## Initializes drag temporary data with current position and boundaries.
+## Initializes drag temporary data with current position and boundary distances.
 func init_drag_temp_data() -> void:
 	var spare_size: Vector2 = ScrollLayout.get_spare_size(_container, _container.content_margins)
 	var content_node_size_diff: Vector2 = ScrollLayout.get_child_size_diff(
@@ -126,8 +123,7 @@ func init_drag_temp_data() -> void:
 	]
 
 
-## Processes mouse button events (wheel scrolling and drag).
-## [param event] - The mouse button event
+## Processes mouse button events for wheel scrolling and dragging from [param event].
 func _process_mouse_button(event: InputEventMouseButton) -> void:
 	match event.button_index:
 		MOUSE_BUTTON_WHEEL_DOWN:
@@ -149,10 +145,8 @@ func _process_mouse_button(event: InputEventMouseButton) -> void:
 				_end_content_drag()
 
 
-## Handles mouse wheel scrolling.
-## [param event] - The mouse button event
-## [param positive] - True for positive direction (up/left), false for negative (down/right)
-## [param is_vertical] - True for vertical wheel, false for horizontal wheel
+## Handles mouse wheel scrolling from [param event]. [br]
+## Scrolls in [param positive] direction (up/left or down/right) for the specified axis ([param is_vertical]).
 func _handle_wheel_scroll(event: InputEventMouseButton, positive: bool, is_vertical: bool) -> void:
 	_container.last_scroll_type = SmoothScrollContainer.SCROLL_TYPE.WHEEL
 	_container.scroll_damper = _container.wheel_scroll_damper
@@ -195,8 +189,7 @@ func _end_content_drag() -> void:
 	is_in_deadzone = false
 
 
-## Processes drag motion events.
-## [param event] - The motion event with relative movement
+## Processes drag motion events with relative movement from [param event].
 func _process_drag_motion(event) -> void:
 	if not content_dragging: return
 	
@@ -209,8 +202,7 @@ func _process_drag_motion(event) -> void:
 	_container.handle_content_dragging()
 
 
-## Processes pan gesture events.
-## [param event] - The pan gesture event
+## Processes pan gesture events from [param event].
 func _process_pan_gesture(event: InputEventPanGesture) -> void:
 	if _container.should_scroll_horizontal():
 		_container.velocity.x = -event.delta.x * speed
@@ -220,8 +212,7 @@ func _process_pan_gesture(event: InputEventPanGesture) -> void:
 		_container.scrollbar_animator.kill_scroll_tweens()
 
 
-## Processes screen touch events.
-## [param event] - The touch event
+## Processes screen touch events from [param event].
 func _process_screen_touch(event: InputEventScreenTouch) -> void:
 	if event.pressed:
 		if not drag_with_touch:
@@ -238,9 +229,8 @@ func _process_screen_touch(event: InputEventScreenTouch) -> void:
 		is_in_deadzone = false
 
 
-## Handles scrollbar dragging with mouse button.
-## [param event] - The mouse button event
-## [param vertical] - True for vertical scrollbar, false for horizontal
+## Handles scrollbar dragging with mouse button from [param event]. [br]
+## Processes [param vertical] or horizontal scrollbar interactions.
 func _handle_scrollbar_drag_button(event: InputEventMouseButton, vertical: bool) -> void:
 	if event.pressed:
 		if vertical:
@@ -256,9 +246,8 @@ func _handle_scrollbar_drag_button(event: InputEventMouseButton, vertical: bool)
 			h_scrollbar_dragging = false
 
 
-## Handles scrollbar dragging with touch.
-## [param event] - The touch event
-## [param vertical] - True for vertical scrollbar, false for horizontal
+## Handles scrollbar dragging with touch from [param event]. [br]
+## Processes [param vertical] or horizontal scrollbar interactions.
 func _handle_scrollbar_touch(event: InputEventScreenTouch, vertical: bool) -> void:
 	if event.pressed:
 		if vertical:
@@ -274,8 +263,7 @@ func _handle_scrollbar_touch(event: InputEventScreenTouch, vertical: bool) -> vo
 			h_scrollbar_dragging = false
 
 
-## Recursively removes focus from a node and all its children.
-## [param node] - The node to remove focus from
+## Recursively removes focus from the specified [param node] and all its children.
 func _remove_all_children_focus(node: Node) -> void:
 	if node is Control:
 		var control := node as Control

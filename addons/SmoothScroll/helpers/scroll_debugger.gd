@@ -9,7 +9,7 @@ extends RefCounted
 static var debug_gradient: Gradient = null
 
 
-## Sets up the gradient for debug visualization
+## Sets up the gradient for debug visualization.
 static func setup_debug_drawing() -> void:
 	if debug_gradient == null:
 		debug_gradient = Gradient.new()
@@ -17,8 +17,8 @@ static func setup_debug_drawing() -> void:
 		debug_gradient.set_color(1.0, Color.RED)
 
 
-## Draws debug visualization showing overdrag distances and velocity.
-## [param container] - The SmoothScrollContainer to draw debug info for
+## Draws debug visualization for the specified [param container]. [br]
+## Shows overdrag distances and velocity indicators using colored lines.
 static func draw_debug(container: SmoothScrollContainer) -> void:
 	if not container.content_node: return
 	

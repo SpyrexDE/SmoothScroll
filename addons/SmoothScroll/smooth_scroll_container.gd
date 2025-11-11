@@ -111,7 +111,7 @@ var input_handler: ScrollInputHandler
 
 
 #region Native Functions
-## Called when the node enters the scene tree for the first time.
+## Called when the node enters the scene tree for the first time. [br]
 ## Sets up scrollbars, timers, and initial configuration.
 func _ready() -> void:
 	if not ScrollDebugger.debug_gradient: ScrollDebugger.setup_debug_drawing()
@@ -177,52 +177,49 @@ func _process(delta: float) -> void:
 
 
 #region Input Handling
-## Detects mouse entering and exiting scroll bar areas.
-## [param entered] - True if mouse entered, false if exited
+## Detects when mouse enters or exits scroll bar areas. Triggers appropriate visibility behavior based on [param entered].
 func _mouse_on_scroll_bar(entered: bool) -> void:
 	input_handler.on_mouse_scrollbar(entered)
 
 
-## Forwards scroll inputs from scrollbar to the input handler.
-## [param event] - The input event to process
-## [param vertical] - True for vertical scrollbar, false for horizontal
+## Forwards scroll inputs from the specified scrollbar to the input handler. [br]
+## Handles both [param vertical] and horizontal scrollbar [param event] inputs.
 func _scrollbar_input(event: InputEvent, vertical: bool) -> void:
 	input_handler.process_scrollbar_input(event, vertical)
 
 
-## Handles all GUI input events by delegating to the input handler.
+## Handles all GUI input events by delegating them to the input handler.
 func _gui_input(event: InputEvent) -> void:
 	input_handler.process_gui_input(event)
 
 
-## Scrolls to newly focused element when focus changes.
-## [param control] - The control that received focus
+## Scrolls to ensure the newly focused [param control] is visible when focus changes.
 func _on_focus_changed(control: Control) -> void:
 	if follow_focus and _startup_done:
 		self.ensure_control_visible_smooth(control)
 
 
-## Draws debug information if debug mode is enabled
+## Draws debug information when debug mode is enabled.
 func _draw() -> void:
 	if debug_mode: ScrollDebugger.draw_debug(self)
 
 
-## Sets default mouse filter for SmoothScroll children to MOUSE_FILTER_PASS.
-## [param node] - The node that was added to the tree
+## Sets default mouse filter for SmoothScroll children to [constant Control.MOUSE_FILTER_PASS]. [br]
+## Called when a [param node] is added to the tree.
 func _on_node_added(node: Node) -> void:
 	if node is Control and Engine.is_editor_hint():
 		if is_ancestor_of(node):
 			node.mouse_filter = Control.MOUSE_FILTER_PASS
 
 
-## Called when the scrollbar hide timer times out. Hides scrollbars if not being dragged.
+## Called when the scrollbar hide timer times out. Hides scrollbars when neither scrollbar is being dragged.
 func _scrollbar_hide_timer_timeout() -> void:
 	if scrollbar_animator.should_hide(input_handler.h_scrollbar_dragging, input_handler.v_scrollbar_dragging):
 		scrollbar_animator.hide_scrollbars()
 
 
-## Updates content margins from current StyleBox.
-## Captures baseline offset and clears velocity; keeps scroll math in margin-free space.
+## Updates content margins from the current StyleBox. [br]
+## Captures baseline offset and clears velocity to keep scroll math in margin-free space.
 func _update_content_margins() -> void:
 	_initializing_margins = true
 	
@@ -242,14 +239,14 @@ func _update_content_margins() -> void:
 	call_deferred("_end_margin_init")
 
 
-## Finalizes margin initialization by resetting the initializing flag
+## Finalizes margin initialization by resetting the initializing flag.
 func _end_margin_init() -> void:
 	_initializing_margins = false
 	_startup_done = true
 	_initial_margins_skipped = false
 
 
-## Called when visibility changes. Updates margins if needed.
+## Called when visibility changes. Updates margins when needed.
 func _visibility_changed() -> void:
 	if visible and content_node:
 		if _initial_margins_skipped:
@@ -259,8 +256,7 @@ func _visibility_changed() -> void:
 			call_deferred("_update_content_margins")
 
 
-## Setter for hide_scrollbar_over_time. Manages scrollbar visibility behavior.
-## [param value] - Whether to hide scrollbars over time
+## Setter for [member hide_scrollbar_over_time]. Controls whether scrollbars automatically hide over time based on [param value].
 func _set_hide_scrollbar_over_time(value: bool) -> bool:
 	if value == false:
 		if scrollbar_animator:
@@ -272,8 +268,8 @@ func _set_hide_scrollbar_over_time(value: bool) -> bool:
 	return value
 
 
-## Getter for scroll_horizontal and scroll_vertical properties.
-## [param property] - The property name being accessed
+## Getter for [member scroll_horizontal] and [member scroll_vertical] properties. [br]
+## Returns the scroll value for the specified [param property].
 func _get(property: StringName) -> Variant:
 	match property:
 		"scroll_horizontal":
@@ -288,9 +284,8 @@ func _get(property: StringName) -> Variant:
 			return null
 
 
-## Setter for scroll_horizontal and scroll_vertical properties.
-## [param property] - The property name being set
-## [param value] - The value to set
+## Setter for [member scroll_horizontal] and [member scroll_vertical] properties. [br]
+## Sets the specified [param property] to [param value] and updates scroll position accordingly.
 func _set(property: StringName, value: Variant) -> bool:
 	match property:
 		"scroll_horizontal":
@@ -335,11 +330,9 @@ func _set(property: StringName, value: Variant) -> bool:
 
 
 #region Scrolling Logic
-## Handles scrolling along a single axis.
-## [param vertical] - True for vertical scrolling, false for horizontal
-## [param axis_velocity] - Current velocity on this axis
-## [param axis_pos] - Current position on this axis
-## [param delta] - Time elapsed since last frame
+## Handles scrolling along a single axis. Applies velocity damping, overdrag forces, and boundary snapping. [br]
+## Processes scrolling for either [param vertical] or horizontal axis based on [param axis_velocity], 
+## [param axis_pos], and [param delta] time.
 func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float) -> void:
 	# If no scroll needed, don't apply forces
 	if vertical:
@@ -407,11 +400,9 @@ func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float)
 		velocity.x = axis_velocity
 
 
-## Applies counterforces when content is dragged beyond boundaries.
-## [param vertical] - True for vertical scrolling, false for horizontal
-## [param axis_velocity] - Current velocity on this axis
-## [param axis_pos] - Current position on this axis
-## [param delta] - Time elapsed since last frame
+## Applies counterforces when content is dragged beyond boundaries. [br]
+## Calculates and applies attraction forces for the specified [param vertical] or horizontal axis
+## based on [param axis_velocity], [param axis_pos], and [param delta] time.
 func handle_overdrag(vertical: bool, axis_velocity: float, axis_pos: float, delta: float) -> float:
 	if not scroll_damper: return 0.0
 	
@@ -422,10 +413,9 @@ func handle_overdrag(vertical: bool, axis_velocity: float, axis_pos: float, delt
 	return ScrollPhysics.apply_overdrag(scroll_damper, axis_pos, axis_velocity, size_diff, delta)
 
 
-## Snaps content to boundary if velocity and distance are both below threshold.
-## [param vertical] - True for vertical scrolling, false for horizontal
-## [param axis_velocity] - Current velocity on this axis
-## [param axis_pos] - Current position on this axis
+## Snaps content to boundary when velocity and distance are both below threshold. [br]
+## Checks the specified [param vertical] or horizontal axis with [param axis_velocity] and [param axis_pos]. [br]
+## Returns [code][velocity, position][/code] array with potentially snapped values.
 func snap(vertical: bool, axis_velocity: float, axis_pos: float) -> Array:
 	var spare_size: Vector2 = ScrollLayout.get_spare_size(self, content_margins)
 	var size_diff: float = ScrollLayout.get_child_size_y_diff(content_node, spare_size.y, true) if vertical \
@@ -434,8 +424,8 @@ func snap(vertical: bool, axis_velocity: float, axis_pos: float) -> Array:
 	return ScrollPhysics.apply_snap(axis_velocity, axis_pos, size_diff, just_snap_under)
 
 
-## Handles scrollbar drag input and updates content position.
-## Returns true when scrollbar was dragged
+## Handles scrollbar drag input and updates content position accordingly. [br]
+## Returns [code]true[/code] when a scrollbar was being dragged.
 func handle_scrollbar_drag() -> bool:
 	if input_handler.h_scrollbar_dragging:
 		velocity.x = 0.0
@@ -452,7 +442,7 @@ func handle_scrollbar_drag() -> bool:
 	return false
 
 
-## Handles content dragging with overdrag when dragged beyond boundaries
+## Handles content dragging with overdrag resistance when dragged beyond boundaries.
 func handle_content_dragging() -> void:
 	if not dragging_scroll_damper: return
 	
@@ -491,7 +481,7 @@ func handle_content_dragging() -> void:
 		content_node.position.x = _base_offset.x + x_pos
 
 
-## Updates the is_scrolling state based on current dragging and velocity
+## Updates the [member is_scrolling] state based on current dragging and velocity.
 func update_is_scrolling() -> void:
 	if(
 		(input_handler.content_dragging and not input_handler.is_in_deadzone)
@@ -504,7 +494,7 @@ func update_is_scrolling() -> void:
 		is_scrolling = false
 
 
-## Updates scrollbar positions to match current scroll position and shows them if needed
+## Updates scrollbar positions to match current scroll position and shows them when needed.
 func update_scrollbars() -> void:
 	# Update vertical scroll bar
 	if get_v_scroll_bar().value != -pos.y:
@@ -523,9 +513,8 @@ func update_scrollbars() -> void:
 
 
 #region Public API Functions
-## Scrolls to specific x position with a tween animation.
-## [param x_pos] - Target x position to scroll to
-## [param duration] - Animation duration in seconds.
+## Scrolls to a specific horizontal position with a tween animation. [br]
+## Animates content to [param x_pos] over the specified [param duration] in seconds.
 func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 	if not should_scroll_horizontal(): return
 	if input_handler.content_dragging: return
@@ -538,9 +527,8 @@ func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 	scrollbar_animator.scroll_x_to(x_pos, duration)
 
 
-## Scrolls to specific y position with a tween animation.
-## [param y_pos] - Target y position to scroll to
-## [param duration] - Animation duration in seconds.
+## Scrolls to a specific vertical position with a tween animation. [br]
+## Animates content to [param y_pos] over the specified [param duration] in seconds.
 func scroll_y_to(y_pos: float, duration := 0.5) -> void:
 	if not should_scroll_vertical(): return
 	if input_handler.content_dragging: return
@@ -553,73 +541,65 @@ func scroll_y_to(y_pos: float, duration := 0.5) -> void:
 	scrollbar_animator.scroll_y_to(y_pos, duration)
 
 
-## Scrolls up one page with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls up one page with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_page_up(duration := 0.5) -> void:
 	var destination: float = pos.y + ScrollLayout.get_spare_size_y(self, content_margins)
 	scroll_y_to(destination, duration)
 
 
-## Scrolls down one page with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls down one page with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_page_down(duration := 0.5) -> void:
 	var destination: float = pos.y - ScrollLayout.get_spare_size_y(self, content_margins)
 	scroll_y_to(destination, duration)
 
 
-## Scrolls left one page with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls left one page with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_page_left(duration := 0.5) -> void:
 	var destination: float = pos.x + ScrollLayout.get_spare_size_x(self, content_margins)
 	scroll_x_to(destination, duration)
 
 
-## Scrolls right one page with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls right one page with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_page_right(duration := 0.5) -> void:
 	var destination: float = pos.x - ScrollLayout.get_spare_size_x(self, content_margins)
 	scroll_x_to(destination, duration)
 
 
-## Adds velocity to the vertical scroll for momentum-based scrolling.
-## [param amount] - Amount of velocity to add (positive = scroll up, negative = scroll down)
+## Adds velocity to the vertical scroll for momentum-based scrolling. [br]
+## Positive [param amount] scrolls up, negative scrolls down.
 func scroll_vertically(amount: float) -> void:
 	velocity.y -= amount
 
 
-## Adds velocity to the horizontal scroll for momentum-based scrolling.
-## [param amount] - Amount of velocity to add (positive = scroll left, negative = scroll right)
+## Adds velocity to the horizontal scroll for momentum-based scrolling. [br]
+## Positive [param amount] scrolls left, negative scrolls right.
 func scroll_horizontally(amount: float) -> void:
 	velocity.x -= amount
 
 
-## Scrolls to the top with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls to the top with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_to_top(duration := 0.5) -> void:
 	scroll_y_to(0.0, duration)
 
 
-## Scrolls to the bottom with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls to the bottom with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_to_bottom(duration := 0.5) -> void:
 	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
 	scroll_y_to(spare_size_y - content_node.size.y, duration)
 
 
-## Scrolls to the leftmost position with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls to the leftmost position with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_to_left(duration := 0.5) -> void:
 	scroll_x_to(0.0, duration)
 
 
-## Scrolls to the rightmost position with a tween animation.
-## [param duration] - Animation duration in seconds.
+## Scrolls to the rightmost position with a tween animation. Duration is specified by [param duration] in seconds.
 func scroll_to_right(duration := 0.5) -> void:
 	var spare_size_x: float = ScrollLayout.get_spare_size_x(self, content_margins)
 	scroll_x_to(spare_size_x - content_node.size.x, duration)
 
 
-## Returns true if there is enough content height to scroll
+## Returns [code]true[/code] when there is enough content height to scroll vertically.
 func should_scroll_vertical() -> bool:
 	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
 	var child_size_diff: float = ScrollLayout.get_child_size_y_diff(content_node, spare_size_y, false)
@@ -635,7 +615,7 @@ func should_scroll_vertical() -> bool:
 		return true
 
 
-## Returns true if there is enough content width to scroll
+## Returns [code]true[/code] when there is enough content width to scroll horizontally.
 func should_scroll_horizontal() -> bool:
 	var spare_size_x: float = ScrollLayout.get_spare_size_x(self, content_margins)
 	var child_size_diff: float = ScrollLayout.get_child_size_x_diff(content_node, spare_size_x, false)
@@ -651,9 +631,8 @@ func should_scroll_horizontal() -> bool:
 		return true
 
 
-## Smoothly scrolls to ensure the given control node is visible with animation.
-## Replaces the built-in function ensure_control_visible.
-## [param control] - The control to make visible
+## Smoothly scrolls to ensure the given [param control] node is visible with animation. [br]
+## Replaces the built-in [method ScrollContainer.ensure_control_visible] function.
 func ensure_control_visible_smooth(control: Control) -> void:
 	if not content_node: return
 	if not content_node.is_ancestor_of(control): return

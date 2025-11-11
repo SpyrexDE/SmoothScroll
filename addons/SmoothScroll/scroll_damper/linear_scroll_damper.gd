@@ -24,29 +24,25 @@ var _factor: float = 10000.0: set = _set_factor
 #endregion
 
 
-## Calculates velocity at a given time using linear curve.
-## [param time] - Time value for velocity calculation
+## Calculates velocity at the given [param time] using linear curve.
 func _calculate_velocity_by_time(time: float) -> float:
 	if time <= 0.0:
 		return 0.0
 	return time * _factor
 
 
-## Calculates time needed to reach a given velocity.
-## [param velocity] - Target velocity
+## Calculates time needed to reach the given [param velocity].
 func _calculate_time_by_velocity(velocity: float) -> float:
 	return abs(velocity) / _factor
 
 
-## Calculates offset traveled at a given time.
-## [param time] - Time value for offset calculation
+## Calculates offset traveled at the given [param time].
 func _calculate_offset_by_time(time: float) -> float:
 	time = max(time, 0.0)
 	return QUADRATIC_COEFFICIENT * _factor * pow(time, QUADRATIC_POWER)
 
 
-## Calculates time needed to travel a given offset.
-## [param offset] - Target offset distance
+## Calculates time needed to travel the given [param offset] distance.
 func _calculate_time_by_offset(offset: float) -> float:
 	return sqrt(abs(offset) * SQRT_MULTIPLIER / _factor)
 

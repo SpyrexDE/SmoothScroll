@@ -26,8 +26,7 @@ var _factor: float = 10000.0: set = _set_factor
 #endregion
 
 
-## Calculates velocity at a given time using exponential curve.
-## [param time] - Time value for velocity calculation
+## Calculates velocity at the given [param time] using exponential curve.
 func _calculate_velocity_by_time(time: float) -> float:
 	var minimum_time: float = _calculate_time_by_velocity(minimum_velocity)
 	if time <= minimum_time:
@@ -35,28 +34,24 @@ func _calculate_velocity_by_time(time: float) -> float:
 	return pow(_factor, time)
 
 
-## Calculates time needed to reach a given velocity.
-## [param velocity] - Target velocity
+## Calculates time needed to reach the given [param velocity].
 func _calculate_time_by_velocity(velocity: float) -> float:
 	return log(abs(velocity)) / log(_factor)
 
 
-## Calculates offset traveled at a given time.
-## [param time] - Time value for offset calculation
+## Calculates offset traveled at the given [param time].
 func _calculate_offset_by_time(time: float) -> float:
 	return pow(_factor, time) / log(_factor)
 
 
-## Calculates time needed to travel a given offset.
-## [param offset] - Target offset distance
+## Calculates time needed to travel the given [param offset] distance.
 func _calculate_time_by_offset(offset: float) -> float:
 	return log(offset * log(_factor)) / log(_factor)
 
 
-## Calculates the velocity needed to reach a destination.
-## Overrides base implementation to account for minimum velocity.
-## [param from] - Starting position
-## [param to] - Target position
+## Calculates the velocity needed to reach a destination. [br]
+## Overrides base implementation to account for [member minimum_velocity]. [br]
+## Computes required velocity to move from [param from] position to [param to] position.
 func _calculate_velocity_to_dest(from: float, to: float) -> float:
 	var dist: float = to - from
 	var min_time: float = _calculate_time_by_velocity(minimum_velocity)

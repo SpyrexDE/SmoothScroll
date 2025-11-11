@@ -9,13 +9,9 @@ extends RefCounted
 const OVERDRAG_DAMPING: float = 0.00001
 
 
-## Applies counterforces when content is dragged beyond boundaries.
-## Returns the modified velocity after applying bounce/attract forces.
-## [param scroll_damper] - The scroll damper to use for calculations
-## [param axis_pos] - Current position on the axis
-## [param axis_velocity] - Current velocity on the axis
-## [param size_diff] - Size difference between container and content
-## [param delta] - Time elapsed since last frame
+## Applies counterforces when content is dragged beyond boundaries using [param scroll_damper]. [br]
+## Calculates bounce and attract forces based on [param axis_pos], [param axis_velocity],
+## [param size_diff], and [param delta] time. Returns the modified velocity.
 static func apply_overdrag(
 	scroll_damper: ScrollDamper,
 	axis_pos: float,
@@ -43,12 +39,9 @@ static func apply_overdrag(
 	return axis_velocity
 
 
-## Snaps content to boundary if velocity and distance are both below threshold.
-## Returns [velocity, position] array with potentially snapped values.
-## [param axis_velocity] - Current velocity on the axis
-## [param axis_pos] - Current position on the axis
-## [param size_diff] - Size difference between container and content
-## [param snap_threshold] - Distance/velocity threshold for snapping
+## Snaps content to boundary when velocity and distance are both below [param snap_threshold]. [br]
+## Evaluates [param axis_velocity], [param axis_pos], and [param size_diff] to determine snapping. [br]
+## Returns [code][velocity, position][/code] array with potentially snapped values.
 static func apply_snap(
 	axis_velocity: float,
 	axis_pos: float,
@@ -78,10 +71,8 @@ static func apply_snap(
 	return [axis_velocity, axis_pos]
 
 
-## Calculates the destination position when dragging with overdrag damping.
-## Returns the damped displacement.
-## [param delta] - Distance being dragged
-## [param damping_factor] - The damping factor to apply
+## Calculates the destination position when dragging with overdrag damping. [br]
+## Applies [param damping_factor] to the [param delta] distance being dragged.
 static func calculate_overdrag_dest(delta: float, damping_factor: float) -> float:
 	if delta >= 0.0:
 		return delta / (1.0 + delta * damping_factor * OVERDRAG_DAMPING)
@@ -89,13 +80,9 @@ static func calculate_overdrag_dest(delta: float, damping_factor: float) -> floa
 		return delta
 
 
-## Calculates the position when dragging content with boundary overdrag resistance.
-## Returns the final position after applying overdrag calculations.
-## [param temp_dist_start] - Distance to start boundary
-## [param temp_dist_end] - Distance to end boundary
-## [param temp_relative] - Accumulated relative movement during drag
-## [param drag_start_pos] - Position where dragging started
-## [param damping_factor] - The damping factor for overdrag
+## Calculates the position when dragging content with boundary overdrag resistance. [br]
+## Uses [param temp_dist_start], [param temp_dist_end], [param temp_relative], [param drag_start_pos],
+## and [param damping_factor] to compute the final position after applying overdrag calculations.
 static func calculate_drag_position(
 	temp_dist_start: float,
 	temp_dist_end: float,
