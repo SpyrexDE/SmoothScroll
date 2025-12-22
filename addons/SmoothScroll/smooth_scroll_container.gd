@@ -495,12 +495,13 @@ func handle_content_dragging() -> void:
 		content_node.position.x = _base_offset.x + x_pos
 
 
-## Updates the [member is_scrolling] state based on current dragging and velocity.
+## Updates the [member is_scrolling] state based on current dragging, velocity, and active tweens.
 func update_is_scrolling() -> void:
 	if(
 		(input_handler.content_dragging and not input_handler.is_in_deadzone)
 		or input_handler.any_scrollbar_dragging()
 		or velocity != Vector2.ZERO
+		or scrollbar_animator.has_active_scroll_tween()
 	):
 		is_scrolling = true
 	

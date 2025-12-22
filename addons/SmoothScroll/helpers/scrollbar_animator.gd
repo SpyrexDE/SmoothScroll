@@ -173,6 +173,12 @@ func kill_scroll_tweens() -> void:
 	kill_scroll_y_tween()
 
 
+## Returns [code]true[/code] if any scroll tween is currently active.
+func has_active_scroll_tween() -> bool:
+	return (_scroll_x_tween and _scroll_x_tween.is_valid() and _scroll_x_tween.is_running()) \
+		or (_scroll_y_tween and _scroll_y_tween.is_valid() and _scroll_y_tween.is_running())
+
+
 ## Called when hide timer times out.
 func _on_hide_timer_timeout() -> void:
 	hide_scrollbars()
