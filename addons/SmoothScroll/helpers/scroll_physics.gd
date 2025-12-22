@@ -53,16 +53,14 @@ static func apply_snap(
 	
 	# Snap to start boundary
 	if (
-		dist_to_start > 0.0
-		and abs(dist_to_start) < snap_threshold
+		abs(dist_to_start) < snap_threshold
 		and abs(axis_velocity) < snap_threshold
 	):
 		axis_pos = 0.0
 		axis_velocity = 0.0
 	# Snap to end boundary
 	elif (
-		dist_to_end < 0.0
-		and abs(dist_to_end) < snap_threshold
+		abs(dist_to_end) < snap_threshold
 		and abs(axis_velocity) < snap_threshold
 	):
 		axis_pos = -size_diff

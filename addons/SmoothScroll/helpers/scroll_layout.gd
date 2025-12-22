@@ -27,7 +27,7 @@ static func get_spare_size_y(container: Control, content_margins: Vector4) -> fl
 	
 	if h_scroll_bar.visible:
 		size_y -= h_scroll_bar.size.y
-	
+
 	size_y -= content_margins.y + content_margins.w
 	return max(size_y, 0.0)
 
@@ -138,10 +138,10 @@ static func get_content_margins(container: Control) -> Vector4:
 	var style_box: StyleBox = container.get_theme_stylebox("panel")
 	if style_box:
 		return Vector4(
-			style_box.content_margin_left,
-			style_box.content_margin_top,
-			style_box.content_margin_right,
-			style_box.content_margin_bottom
+			max(style_box.content_margin_left, 0),
+			max(style_box.content_margin_top, 0),
+			max(style_box.content_margin_right, 0),
+			max(style_box.content_margin_bottom, 0)
 		)
 	else:
 		return Vector4.ZERO
