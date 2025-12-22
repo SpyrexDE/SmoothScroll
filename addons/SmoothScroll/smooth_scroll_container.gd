@@ -105,6 +105,8 @@ var _initial_margins_skipped: bool = false
 var scrollbar_animator: ScrollbarAnimator
 ## Input handler for all user input events
 var input_handler: ScrollInputHandler
+## Cache is_editor_hint() value for performance
+var _is_editor_hint = Engine.is_editor_hint()
 #endregion
 
 #endregion
@@ -144,7 +146,6 @@ func _ready() -> void:
 	# Check if we're initially hidden - if so, defer margin calculation until visible
 	if visible:
 		call_deferred("_update_content_margins")
-	
 	else:
 		_initial_margins_skipped = true
 
@@ -159,12 +160,16 @@ func _ready() -> void:
 	if hide_scrollbar_over_time:
 		scrollbar_animator.start_hide_timer()
 	
-	get_tree().node_added.connect(_on_node_added)
+	if _is_editor_hint:
+		get_tree().node_added.connect(_on_node_added)
+	
+	# Default to idle state until needed
+	set_process(false)
 
 
 ## Called every frame. Updates scroll position, velocity, and scrollbar state.
 func _process(delta: float) -> void:
-	if Engine.is_editor_hint(): return
+	if _is_editor_hint: return
 	if _initializing_margins: return
 
 	scroll(true, velocity.y, pos.y, delta)
@@ -173,6 +178,9 @@ func _process(delta: float) -> void:
 	update_is_scrolling()
 
 	if debug_mode: queue_redraw()
+	
+	if not is_scrolling:
+		set_process(false)
 #endregion
 
 
@@ -185,11 +193,13 @@ func _mouse_on_scroll_bar(entered: bool) -> void:
 ## Forwards scroll inputs from the specified scrollbar to the input handler. [br]
 ## Handles both [param vertical] and horizontal scrollbar [param event] inputs.
 func _scrollbar_input(event: InputEvent, vertical: bool) -> void:
+	set_process(true)
 	input_handler.process_scrollbar_input(event, vertical)
 
 
 ## Handles all GUI input events by delegating them to the input handler.
 func _gui_input(event: InputEvent) -> void:
+	set_process(true)
 	input_handler.process_gui_input(event)
 
 
@@ -207,7 +217,7 @@ func _draw() -> void:
 ## Sets default mouse filter for SmoothScroll children to [constant Control.MOUSE_FILTER_PASS]. [br]
 ## Called when a [param node] is added to the tree.
 func _on_node_added(node: Node) -> void:
-	if node is Control and Engine.is_editor_hint():
+	if node is Control:
 		if is_ancestor_of(node):
 			node.mouse_filter = Control.MOUSE_FILTER_PASS
 
@@ -221,6 +231,7 @@ func _scrollbar_hide_timer_timeout() -> void:
 ## Updates content margins from the current StyleBox. [br]
 ## Captures baseline offset and clears velocity to keep scroll math in margin-free space.
 func _update_content_margins() -> void:
+	set_process(true)
 	_initializing_margins = true
 	
 	content_margins = ScrollLayout.get_content_margins(self)
@@ -304,6 +315,8 @@ func _set(property: StringName, value: Variant) -> bool:
 				-ScrollLayout.get_child_size_x_diff(content_node, spare_size_x, true),
 				0.0
 			)
+			# Wake up process to ensure scrollbars update visually
+			set_process(true) 
 			return true
 		
 		"scroll_vertical":
@@ -322,7 +335,8 @@ func _set(property: StringName, value: Variant) -> bool:
 				-ScrollLayout.get_child_size_y_diff(content_node, spare_size_y, true),
 				0.0
 			)
-
+			# Important: Wake up process to ensure scrollbars update visually
+			set_process(true)
 			return true
 		_:
 			return false
@@ -518,7 +532,8 @@ func update_scrollbars() -> void:
 func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 	if not should_scroll_horizontal(): return
 	if input_handler.content_dragging: return
-
+	
+	set_process(true)
 	velocity.x = 0.0
 	var spare_size_x: float = ScrollLayout.get_spare_size_x(self, content_margins)
 	var size_x_diff: float = ScrollLayout.get_child_size_x_diff(content_node, spare_size_x, true)
@@ -533,6 +548,7 @@ func scroll_y_to(y_pos: float, duration := 0.5) -> void:
 	if not should_scroll_vertical(): return
 	if input_handler.content_dragging: return
 
+	set_process(true)
 	velocity.y = 0.0
 	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
 	var size_y_diff: float = ScrollLayout.get_child_size_y_diff(content_node, spare_size_y, true)
@@ -569,12 +585,14 @@ func scroll_page_right(duration := 0.5) -> void:
 ## Positive [param amount] scrolls up, negative scrolls down.
 func scroll_vertically(amount: float) -> void:
 	velocity.y -= amount
+	set_process(true)
 
 
 ## Adds velocity to the horizontal scroll for momentum-based scrolling. [br]
 ## Positive [param amount] scrolls left, negative scrolls right.
 func scroll_horizontally(amount: float) -> void:
 	velocity.x -= amount
+	set_process(true)
 
 
 ## Scrolls to the top with a tween animation. Duration is specified by [param duration] in seconds.
@@ -638,6 +656,9 @@ func ensure_control_visible_smooth(control: Control) -> void:
 	if not content_node.is_ancestor_of(control): return
 	if not scroll_damper: return
 	
+	# Wake up to process the potential scroll action
+	set_process(true)
+
 	var size_diff: Vector2 = (
 		control.get_global_rect().size - get_global_rect().size
 	) / (get_global_rect().size / size)
