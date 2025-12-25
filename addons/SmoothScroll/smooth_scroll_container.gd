@@ -219,7 +219,9 @@ func _draw() -> void:
 func _on_node_added(node: Node) -> void:
 	if node is Control:
 		if is_ancestor_of(node):
-			node.mouse_filter = Control.MOUSE_FILTER_PASS
+			if not node.has_meta("_smooth_scroll_default_mouse_filter_set"):
+				node.mouse_filter = Control.MOUSE_FILTER_PASS
+				node.set_meta("_smooth_scroll_default_mouse_filter_set", true)
 
 
 ## Called when the scrollbar hide timer times out. Hides scrollbars when neither scrollbar is being dragged.
