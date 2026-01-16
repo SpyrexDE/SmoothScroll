@@ -364,6 +364,23 @@ func _set(property: StringName, value: Variant) -> bool:
 ## Processes scrolling for either [param vertical] or horizontal axis based on [param axis_velocity], 
 ## [param axis_pos], and [param delta] time.
 func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float) -> void:
+	# Special case: If delta is 0, we treat this as a forced position set (teleport)
+	# This allows callers to reset scroll state manually (e.g. scroll(true, 0, 0, 0))
+	if is_zero_approx(delta):
+		if vertical:
+			velocity.y = axis_velocity
+			pos.y = axis_pos
+			if content_node:
+				content_node.position.y = _base_offset.y + axis_pos
+			if get_v_scroll_bar(): get_v_scroll_bar().set_value_no_signal(-axis_pos)
+		else:
+			velocity.x = axis_velocity
+			pos.x = axis_pos
+			if content_node:
+				content_node.position.x = _base_offset.x + axis_pos
+			if get_h_scroll_bar(): get_h_scroll_bar().set_value_no_signal(-axis_pos)
+		return
+
 	# If no scroll needed, don't apply forces
 	if vertical:
 		if not should_scroll_vertical(): 
