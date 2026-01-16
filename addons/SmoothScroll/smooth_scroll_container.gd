@@ -366,10 +366,28 @@ func _set(property: StringName, value: Variant) -> bool:
 func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float) -> void:
 	# If no scroll needed, don't apply forces
 	if vertical:
-		if not should_scroll_vertical(): return
+		if not should_scroll_vertical(): 
+			# Ensures position resets to 0 if content fits and auto-scroll disabled it
+			if auto_allow_scroll and pos.y != 0 and content_node:
+				var spare = ScrollLayout.get_spare_size_y(self, content_margins)
+				var diff = ScrollLayout.get_child_size_y_diff(content_node, spare, false)
+				if diff <= 0:
+					velocity.y = 0.0
+					pos.y = 0.0
+					content_node.position.y = _base_offset.y + pos.y
+			return
 	
 	else:
-		if not should_scroll_horizontal(): return
+		if not should_scroll_horizontal(): 
+			# Ensures position resets to 0 if content fits and auto-scroll disabled it
+			if auto_allow_scroll and pos.x != 0 and content_node:
+				var spare = ScrollLayout.get_spare_size_x(self, content_margins)
+				var diff = ScrollLayout.get_child_size_x_diff(content_node, spare, false)
+				if diff <= 0:
+					velocity.x = 0.0
+					pos.x = 0.0
+					content_node.position.x = _base_offset.x + pos.x
+			return
 	
 	if not scroll_damper: return
 	# Applies counterforces when overdragging
@@ -650,6 +668,21 @@ func scroll_to_right(duration := 0.5) -> void:
 	scroll_x_to(spare_size_x - content_node.size.x, duration)
 
 
+## Resets the scroll position and velocity to zero instantly.
+func reset_scroll() -> void:
+	velocity = Vector2.ZERO
+	pos = Vector2.ZERO
+	scrollbar_animator.kill_scroll_tweens()
+	if content_node:
+		# Reset position based on current base offset or 0 if margin layout
+		# Usually we just want to apply 0 scroll:
+		content_node.position = _base_offset
+	
+	# Sync native scrollbars
+	if get_v_scroll_bar(): get_v_scroll_bar().value = 0
+	if get_h_scroll_bar(): get_h_scroll_bar().value = 0
+
+
 ## Returns [code]true[/code] when there is enough content height to scroll vertically.
 func should_scroll_vertical() -> bool:
 	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
@@ -660,7 +693,7 @@ func should_scroll_vertical() -> bool:
 	
 	if disable_scroll:
 		velocity.y = 0.0
-		return false
+		return pos.y != 0
 	
 	else:
 		return true
@@ -676,7 +709,7 @@ func should_scroll_horizontal() -> bool:
 	
 	if disable_scroll:
 		velocity.x = 0.0
-		return false
+		return pos.x != 0
 	
 	else:
 		return true
@@ -784,6 +817,7 @@ func _execute_ensure_control_visible(control: Control, instant: bool) -> void:
 	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
 	var size_x_diff: float = ScrollLayout.get_child_size_x_diff(content_node, spare_size_x, true)
 	var size_y_diff: float = ScrollLayout.get_child_size_y_diff(content_node, spare_size_y, true)
+	
 	target_x = clampf(target_x, -size_x_diff, 0.0)
 	target_y = clampf(target_y, -size_y_diff, 0.0)
 	
