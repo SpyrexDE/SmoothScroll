@@ -62,6 +62,10 @@ enum SCROLL_TYPE {
 @export_group("Input")
 ## If true sets the input event as handled with set_input_as_handled()
 @export var handle_input: bool = true
+## If true, automatically sets child Control nodes' mouse_filter to MOUSE_FILTER_PASS
+## to ensure smooth scrolling works properly also during runtime. Always enabled in editor.
+@export var override_mouse_filters: bool = true:
+	set(val): override_mouse_filters = _set_override_mouse_filters(val)
 
 @export_group("Debug")
 ## Adds debug information
@@ -160,8 +164,10 @@ func _ready() -> void:
 	if hide_scrollbar_over_time:
 		scrollbar_animator.start_hide_timer()
 	
-	if _is_editor_hint:
+	if _is_editor_hint or override_mouse_filters:
 		get_tree().node_added.connect(_on_node_added)
+		if override_mouse_filters and not _is_editor_hint:
+			call_deferred("_apply_mouse_filters_to_children")
 	
 	# Default to idle state until needed
 	set_process(false)
@@ -217,8 +223,8 @@ func _draw() -> void:
 ## Sets default mouse filter for SmoothScroll children to [constant Control.MOUSE_FILTER_PASS]. [br]
 ## Called when a [param node] is added to the tree.
 func _on_node_added(node: Node) -> void:
-	if node is Control:
-		if is_ancestor_of(node):
+	if node is Control and is_ancestor_of(node):
+		if (_is_editor_hint or override_mouse_filters):
 			if not node.has_meta("_smooth_scroll_default_mouse_filter_set"):
 				node.mouse_filter = Control.MOUSE_FILTER_PASS
 				node.set_meta("_smooth_scroll_default_mouse_filter_set", true)
@@ -279,6 +285,36 @@ func _set_hide_scrollbar_over_time(value: bool) -> bool:
 		if scrollbar_animator:
 			scrollbar_animator.start_hide_timer()
 	return value
+
+
+## Setter for [member override_mouse_filters]. Applies mouse filter to existing children when enabled at runtime.
+func _set_override_mouse_filters(value: bool) -> bool:
+	if is_inside_tree():
+		if value or _is_editor_hint:
+			if not get_tree().node_added.is_connected(_on_node_added):
+				get_tree().node_added.connect(_on_node_added)
+			if value and not _is_editor_hint:
+				call_deferred("_apply_mouse_filters_to_children")
+		elif not _is_editor_hint:
+			if get_tree().node_added.is_connected(_on_node_added):
+				get_tree().node_added.disconnect(_on_node_added)
+	return value
+
+
+## Applies MOUSE_FILTER_PASS to all child Control nodes recursively.
+func _apply_mouse_filters_to_children() -> void:
+	_apply_mouse_filter_recursive(self)
+
+
+## Recursively applies mouse filter to Control nodes.
+func _apply_mouse_filter_recursive(node: Node) -> void:
+	if node is Control and node != self and is_ancestor_of(node):
+		if not node.has_meta("_smooth_scroll_default_mouse_filter_set"):
+			node.mouse_filter = Control.MOUSE_FILTER_PASS
+			node.set_meta("_smooth_scroll_default_mouse_filter_set", true)
+	
+	for child in node.get_children():
+		_apply_mouse_filter_recursive(child)
 
 
 ## Getter for [member scroll_horizontal] and [member scroll_vertical] properties. [br]
