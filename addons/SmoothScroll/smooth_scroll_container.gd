@@ -111,8 +111,6 @@ var scrollbar_animator: ScrollbarAnimator
 var input_handler: ScrollInputHandler
 ## Cache is_editor_hint() value for performance
 var _is_editor_hint = Engine.is_editor_hint()
-## Cache "follow_focus" to avoid conflict with native behavior.
-var _follow_focus_active: bool = false
 
 ## Cache last known size to detect size changes for follow_focus deferral
 var _last_ensure_size := Vector2.ZERO
@@ -132,11 +130,6 @@ var _ensure_stability_timer: Timer = null
 ## Sets up scrollbars, timers, and initial configuration.
 func _ready() -> void:
 	if not ScrollDebugger.debug_gradient: ScrollDebugger.setup_debug_drawing()
-	
-	# This will basically hijack the native follow_focus behavior to use our own smooth scrolling.
-	if not Engine.is_editor_hint():
-		_follow_focus_active = follow_focus
-		follow_focus = false
 	
 	# Initialize variables
 	scroll_damper = wheel_scroll_damper
@@ -227,7 +220,7 @@ func _gui_input(event: InputEvent) -> void:
 
 ## Scrolls to ensure the newly focused [param control] is visible when focus changes.
 func _on_focus_changed(control: Control) -> void:
-	if _follow_focus_active and _startup_done:
+	if follow_focus and _startup_done:
 		self.ensure_control_visible_smooth(control)
 
 
