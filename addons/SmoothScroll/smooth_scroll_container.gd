@@ -254,12 +254,10 @@ func _update_content_margins() -> void:
 	content_margins = ScrollLayout.get_content_margins(self)
 	
 	if content_node:
+		_base_offset = ScrollLayout.calculate_base_offset(content_margins)
+		
 		if _initial_margins_skipped:
-			_base_offset = ScrollLayout.calculate_initial_offset(content_margins)
 			pos = Vector2.ZERO
-		else:
-			# Capture new baseline offset from layout; rendering uses _base_offset + pos
-			_base_offset = ScrollLayout.calculate_base_offset(content_node, pos)
 		
 		if not _startup_done:
 			velocity = Vector2.ZERO

@@ -147,15 +147,7 @@ static func get_content_margins(container: Control) -> Vector4:
 		return Vector4.ZERO
 
 
-## Calculates the baseline offset for content positioning from [param content_node] and [param current_scroll_pos]. [br]
-## This captures the layout offset applied by StyleBox and content positioning.
-static func calculate_base_offset(content_node: Control, current_scroll_pos: Vector2) -> Vector2:
-	if not content_node:
-		return Vector2.ZERO
-	return content_node.position - current_scroll_pos
-
-
-## Calculates the initial base offset from [param content_margins]. [br]
+## Calculates the base offset from [param content_margins]. [br]
 ## Returns the baseline offset as [Vector2].
-static func calculate_initial_offset(content_margins: Vector4) -> Vector2:
+static func calculate_base_offset(content_margins: Vector4) -> Vector2:
 	return Vector2(content_margins.x, content_margins.y)
