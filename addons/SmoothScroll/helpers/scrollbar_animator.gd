@@ -131,13 +131,24 @@ func scroll_x_to(target_pos: float, duration: float = 0.5) -> void:
 		_scroll_x_tween.kill()
 	
 	_scroll_x_tween = _container.create_tween()
-	var tweener: PropertyTweener = _scroll_x_tween.tween_property(
+	_scroll_x_tween.set_parallel(true)
+	var pos_tweener: PropertyTweener = _scroll_x_tween.tween_property(
 		_container,
 		"pos:x",
 		target_pos,
 		duration
 	)
-	tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
+	pos_tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
+	
+	# Also tween content_node position directly to ensure it moves even when scroll() early-returns
+	if _container.content_node:
+		var content_tweener: PropertyTweener = _scroll_x_tween.tween_property(
+			_container.content_node,
+			"position:x",
+			_container._base_offset.x + target_pos,
+			duration
+		)
+		content_tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
 
 ## Animates vertical scroll to [param target_pos] with the specified [param duration].
@@ -146,13 +157,25 @@ func scroll_y_to(target_pos: float, duration: float = 0.5) -> void:
 		_scroll_y_tween.kill()
 	
 	_scroll_y_tween = _container.create_tween()
-	var tweener: PropertyTweener = _scroll_y_tween.tween_property(
+	_scroll_y_tween.set_parallel(true)
+	var pos_tweener: PropertyTweener = _scroll_y_tween.tween_property(
 		_container,
 		"pos:y",
 		target_pos,
 		duration
 	)
-	tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
+	pos_tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
+	
+	# Also tween content_node position directly to ensure it moves even when scroll() early-returns
+	if _container.content_node:
+		var target_content_pos = _container._base_offset.y + target_pos
+		var content_tweener: PropertyTweener = _scroll_y_tween.tween_property(
+			_container.content_node,
+			"position:y",
+			target_content_pos,
+			duration
+		)
+		content_tweener.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUINT)
 
 
 ## Kills horizontal scroll tween if it exists.

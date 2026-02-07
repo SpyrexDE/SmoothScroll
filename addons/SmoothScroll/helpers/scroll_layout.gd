@@ -44,7 +44,7 @@ static func get_spare_size(container: Control, content_margins: Vector4) -> Vect
 ## Calculates the size difference between container and [param child] node on the X axis. [br]
 ## When [param clamp] is [code]true[/code], clamps child size to minimum of [param spare_size_x].
 static func get_child_size_x_diff(child: Control, spare_size_x: float, clamp: bool) -> float:
-	var child_size_x: float = child.size.x * child.scale.x
+	var child_size_x: float = max(child.size.x, child.get_combined_minimum_size().x) * child.scale.x
 	
 	if clamp:
 		child_size_x = max(child_size_x, spare_size_x)
@@ -55,7 +55,7 @@ static func get_child_size_x_diff(child: Control, spare_size_x: float, clamp: bo
 ## Calculates the size difference between container and [param child] node on the Y axis. [br]
 ## When [param clamp] is [code]true[/code], clamps child size to minimum of [param spare_size_y].
 static func get_child_size_y_diff(child: Control, spare_size_y: float, clamp: bool) -> float:
-	var child_size_y: float = child.size.y * child.scale.y
+	var child_size_y: float = max(child.size.y, child.get_combined_minimum_size().y) * child.scale.y
 	
 	if clamp:
 		child_size_y = max(child_size_y, spare_size_y)

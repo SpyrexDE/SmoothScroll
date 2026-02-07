@@ -111,6 +111,15 @@ var scrollbar_animator: ScrollbarAnimator
 var input_handler: ScrollInputHandler
 ## Cache is_editor_hint() value for performance
 var _is_editor_hint = Engine.is_editor_hint()
+
+## Cache last known size to detect size changes for follow_focus deferral
+var _last_ensure_size := Vector2.ZERO
+## Counter to track frames of size stability
+var _size_stable_frames := 0
+## Pending control to scroll to after size stabilizes
+var _pending_ensure_control: Control = null
+## Timer to check for size stability
+var _ensure_stability_timer: Timer = null
 #endregion
 
 #endregion
@@ -386,12 +395,47 @@ func _set(property: StringName, value: Variant) -> bool:
 ## Processes scrolling for either [param vertical] or horizontal axis based on [param axis_velocity], 
 ## [param axis_pos], and [param delta] time.
 func scroll(vertical: bool, axis_velocity: float, axis_pos: float, delta: float) -> void:
+	# Special case: If delta is 0, we treat this as a forced position set (teleport)
+	# This allows callers to reset scroll state manually (e.g. scroll(true, 0, 0, 0))
+	if is_zero_approx(delta):
+		if vertical:
+			velocity.y = axis_velocity
+			pos.y = axis_pos
+			if content_node:
+				content_node.position.y = _base_offset.y + axis_pos
+			if get_v_scroll_bar(): get_v_scroll_bar().set_value_no_signal(-axis_pos)
+		else:
+			velocity.x = axis_velocity
+			pos.x = axis_pos
+			if content_node:
+				content_node.position.x = _base_offset.x + axis_pos
+			if get_h_scroll_bar(): get_h_scroll_bar().set_value_no_signal(-axis_pos)
+		return
+
 	# If no scroll needed, don't apply forces
 	if vertical:
-		if not should_scroll_vertical(): return
+		if not should_scroll_vertical(): 
+			# Ensures position resets to 0 if content fits and auto-scroll disabled it
+			if auto_allow_scroll and pos.y != 0 and content_node:
+				var spare = ScrollLayout.get_spare_size_y(self, content_margins)
+				var diff = ScrollLayout.get_child_size_y_diff(content_node, spare, false)
+				if diff <= 0:
+					velocity.y = 0.0
+					pos.y = 0.0
+					content_node.position.y = _base_offset.y + pos.y
+			return
 	
 	else:
-		if not should_scroll_horizontal(): return
+		if not should_scroll_horizontal(): 
+			# Ensures position resets to 0 if content fits and auto-scroll disabled it
+			if auto_allow_scroll and pos.x != 0 and content_node:
+				var spare = ScrollLayout.get_spare_size_x(self, content_margins)
+				var diff = ScrollLayout.get_child_size_x_diff(content_node, spare, false)
+				if diff <= 0:
+					velocity.x = 0.0
+					pos.x = 0.0
+					content_node.position.x = _base_offset.x + pos.x
+			return
 	
 	if not scroll_damper: return
 	# Applies counterforces when overdragging
@@ -571,6 +615,14 @@ func update_scrollbars() -> void:
 func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 	if not should_scroll_horizontal(): return
 	if input_handler.content_dragging: return
+	_scroll_x_to_internal(x_pos, duration)
+
+
+## Internal method to scroll horizontally, bypassing should_scroll checks. [br]
+## Used by [method ensure_control_visible_smooth] to ensure focus scrolling always works.
+func _scroll_x_to_internal(x_pos: float, duration := 0.5) -> void:
+	if not content_node: return
+	if not allow_horizontal_scroll: return
 	
 	set_process(true)
 	velocity.x = 0.0
@@ -586,6 +638,14 @@ func scroll_x_to(x_pos: float, duration := 0.5) -> void:
 func scroll_y_to(y_pos: float, duration := 0.5) -> void:
 	if not should_scroll_vertical(): return
 	if input_handler.content_dragging: return
+	_scroll_y_to_internal(y_pos, duration)
+
+
+## Internal method to scroll vertically, bypassing should_scroll checks. [br]
+## Used by [method ensure_control_visible_smooth] to ensure focus scrolling always works.
+func _scroll_y_to_internal(y_pos: float, duration := 0.5) -> void:
+	if not content_node: return
+	if not allow_vertical_scroll: return
 
 	set_process(true)
 	velocity.y = 0.0
@@ -656,6 +716,21 @@ func scroll_to_right(duration := 0.5) -> void:
 	scroll_x_to(spare_size_x - content_node.size.x, duration)
 
 
+## Resets the scroll position and velocity to zero instantly.
+func reset_scroll() -> void:
+	velocity = Vector2.ZERO
+	pos = Vector2.ZERO
+	scrollbar_animator.kill_scroll_tweens()
+	if content_node:
+		# Reset position based on current base offset or 0 if margin layout
+		# Usually we just want to apply 0 scroll:
+		content_node.position = _base_offset
+	
+	# Sync native scrollbars
+	if get_v_scroll_bar(): get_v_scroll_bar().value = 0
+	if get_h_scroll_bar(): get_h_scroll_bar().value = 0
+
+
 ## Returns [code]true[/code] when there is enough content height to scroll vertically.
 func should_scroll_vertical() -> bool:
 	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
@@ -666,7 +741,7 @@ func should_scroll_vertical() -> bool:
 	
 	if disable_scroll:
 		velocity.y = 0.0
-		return false
+		return pos.y != 0
 	
 	else:
 		return true
@@ -682,10 +757,15 @@ func should_scroll_horizontal() -> bool:
 	
 	if disable_scroll:
 		velocity.x = 0.0
-		return false
+		return pos.x != 0
 	
 	else:
 		return true
+
+
+## Overrides built-in method to use smooth scrolling.
+func ensure_control_visible(control: Control) -> void:
+	ensure_control_visible_smooth(control)
 
 
 ## Smoothly scrolls to ensure the given [param control] node is visible with animation. [br]
@@ -695,32 +775,112 @@ func ensure_control_visible_smooth(control: Control) -> void:
 	if not content_node.is_ancestor_of(control): return
 	if not scroll_damper: return
 	
-	# Wake up to process the potential scroll action
-	set_process(true)
+	# If container size is 0, wait for first valid size then track resizes
+	var current_size := size
+	if current_size.x <= 0 or current_size.y <= 0:
+		_pending_ensure_control = control
+		if not resized.is_connected(_on_resized_for_ensure_continuous):
+			resized.connect(_on_resized_for_ensure_continuous)
+		return
+	
+	# Execute the scroll
+	_execute_ensure_control_visible(control, false)
+	
+	# Track this control for continuous updates during resize
+	_pending_ensure_control = control
+	_last_ensure_size = current_size
+	if not resized.is_connected(_on_resized_for_ensure_continuous):
+		resized.connect(_on_resized_for_ensure_continuous)
+	
+	# Start a timer to stop tracking after things stabilize
+	_start_stability_timer()
 
-	var size_diff: Vector2 = (
-		control.get_global_rect().size - get_global_rect().size
-	) / (get_global_rect().size / size)
 
-	var boundary_dist: Vector4 = ScrollLayout.get_boundary_dist(
-		(control.global_position - global_position) \
-				/ (get_global_rect().size / size),
-		size_diff
+## Start or restart the stability timer
+func _start_stability_timer() -> void:
+	if not _ensure_stability_timer:
+		_ensure_stability_timer = Timer.new()
+		_ensure_stability_timer.one_shot = true
+		_ensure_stability_timer.timeout.connect(_on_stability_timeout)
+		add_child(_ensure_stability_timer)
+	_ensure_stability_timer.start(0.6)  # Stop tracking after 600ms of no resize
+
+
+## Called when stability timer expires - stop tracking resizes
+func _on_stability_timeout() -> void:
+	if resized.is_connected(_on_resized_for_ensure_continuous):
+		resized.disconnect(_on_resized_for_ensure_continuous)
+	_pending_ensure_control = null
+	_last_ensure_size = Vector2.ZERO
+
+
+## Called on every resize while tracking a control
+func _on_resized_for_ensure_continuous() -> void:
+	var current_size: Vector2 = size
+	if current_size.x <= 0 or current_size.y <= 0: return
+	
+	if _pending_ensure_control and is_instance_valid(_pending_ensure_control):
+		_execute_ensure_control_visible(_pending_ensure_control, true)
+		_last_ensure_size = current_size
+		_start_stability_timer()
+
+
+## Actually execute the ensure_control_visible logic. [br]
+## If [param instant] is true, set position directly without animation
+func _execute_ensure_control_visible(control: Control, instant: bool) -> void:
+	var control_rect: Rect2 = control.get_global_rect()
+	var content_rect: Rect2 = content_node.get_global_rect()
+	
+	var control_in_content: Vector2 = control_rect.position - content_rect.position
+	var visible_size := Vector2(
+		ScrollLayout.get_spare_size_x(self, content_margins),
+		ScrollLayout.get_spare_size_y(self, content_margins)
 	)
-
-	# Left
-	if boundary_dist.x < content_margins.x + follow_focus_margin:
-		scroll_x_to(pos.x - boundary_dist.x + content_margins.x + follow_focus_margin)
-
-	# Right
-	elif boundary_dist.y > -(follow_focus_margin + content_margins.z):
-		scroll_x_to(pos.x - boundary_dist.y - follow_focus_margin - content_margins.z)
-
-	# Top
-	if boundary_dist.z < content_margins.y + follow_focus_margin:
-		scroll_y_to(pos.y - boundary_dist.z + content_margins.y + follow_focus_margin)
-
-	# Bottom
-	elif boundary_dist.w > -(follow_focus_margin + content_margins.w):
-		scroll_y_to(pos.y - boundary_dist.w - follow_focus_margin - content_margins.w)
+	
+	set_process(true)
+	
+	var target_x: float = pos.x
+	var target_y: float = pos.y
+	
+	# Calculate where control currently appears relative to visible area
+	var control_top_in_view: float = control_in_content.y + pos.y
+	var control_bottom_in_view: float = control_top_in_view + control_rect.size.y
+	var control_left_in_view: float = control_in_content.x + pos.x
+	var control_right_in_view: float = control_left_in_view + control_rect.size.x
+	
+	# Horizontal scrolling
+	if control_left_in_view < follow_focus_margin:
+		target_x = -(control_in_content.x - follow_focus_margin)
+	elif control_right_in_view > visible_size.x - follow_focus_margin:
+		target_x = -(control_in_content.x + control_rect.size.x - visible_size.x + follow_focus_margin)
+	
+	# Vertical scrolling
+	if control_top_in_view < follow_focus_margin:
+		target_y = -(control_in_content.y - follow_focus_margin)
+	elif control_bottom_in_view > visible_size.y - follow_focus_margin:
+		target_y = -(control_in_content.y + control_rect.size.y - visible_size.y + follow_focus_margin)
+	
+	# Clamp targets
+	var spare_size_x: float = ScrollLayout.get_spare_size_x(self, content_margins)
+	var spare_size_y: float = ScrollLayout.get_spare_size_y(self, content_margins)
+	var size_x_diff: float = ScrollLayout.get_child_size_x_diff(content_node, spare_size_x, true)
+	var size_y_diff: float = ScrollLayout.get_child_size_y_diff(content_node, spare_size_y, true)
+	
+	target_x = clampf(target_x, -size_x_diff, 0.0)
+	target_y = clampf(target_y, -size_y_diff, 0.0)
+	
+	# Set position directly, no animation
+	if instant:
+		scrollbar_animator.kill_scroll_tweens()
+		pos.x = target_x
+		pos.y = target_y
+		content_node.position.x = _base_offset.x + target_x
+		content_node.position.y = _base_offset.y + target_y
+	
+	# Use animated scroll
+	else:
+		if target_x != pos.x:
+			_scroll_x_to_internal(target_x)
+		if target_y != pos.y:
+			_scroll_y_to_internal(target_y)
 #endregion
