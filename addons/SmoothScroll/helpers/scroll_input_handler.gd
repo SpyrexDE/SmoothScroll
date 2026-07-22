@@ -31,7 +31,8 @@ var mouse_on_scrollbar: bool = false
 ## Drag state data: [0,1] relative accumulation, [2,3] start pos, [4-7] boundary distances
 var drag_temp_data: Array = []
 #endregion
-
+var drag_distance: Vector2 = Vector2.ZERO
+const TOUCH_DRAG_THRESHOLD := 12.0
 
 ## Initializes the input handler with a reference to the [param container].
 func _init(container: SmoothScrollContainer) -> void:
@@ -191,13 +192,22 @@ func _end_content_drag() -> void:
 
 ## Processes drag motion events with relative movement from [param event].
 func _process_drag_motion(event) -> void:
-	if not content_dragging: return
-	
+	if not content_dragging:
+		return
+
+	if is_in_deadzone:
+		drag_distance += event.relative
+
+		if drag_distance.length() < TOUCH_DRAG_THRESHOLD:
+			return
+
+		is_in_deadzone = false
+
 	if _container.should_scroll_horizontal():
 		drag_temp_data[0] += event.relative.x
 	if _container.should_scroll_vertical():
 		drag_temp_data[1] += event.relative.y
-	
+
 	_remove_all_children_focus(_container)
 	_container.handle_content_dragging()
 
@@ -217,15 +227,19 @@ func _process_screen_touch(event: InputEventScreenTouch) -> void:
 	if event.pressed:
 		if not drag_with_touch:
 			return
-		
+
 		content_dragging = true
+		content_dragging_moved = false
 		is_in_deadzone = true
+		drag_distance = Vector2.ZERO
+
 		_container.scroll_damper = _container.dragging_scroll_damper
 		_container.last_scroll_type = SmoothScrollContainer.SCROLL_TYPE.DRAG
 		init_drag_temp_data()
 		_container.scrollbar_animator.kill_scroll_tweens()
 	else:
 		content_dragging = false
+		content_dragging_moved = false
 		is_in_deadzone = false
 
 
