@@ -540,14 +540,6 @@ func handle_scrollbar_drag() -> bool:
 func handle_content_dragging() -> void:
 	if not dragging_scroll_damper: return
 	
-	if Vector2(input_handler.drag_temp_data[0], input_handler.drag_temp_data[1]).length() < scroll_deadzone and input_handler.is_in_deadzone:
-		return
-	
-	elif input_handler.is_in_deadzone == true:
-		input_handler.is_in_deadzone = false
-		input_handler.drag_temp_data[0] = 0.0
-		input_handler.drag_temp_data[1] = 0.0
-	
 	input_handler.content_dragging_moved = true
 	
 	if should_scroll_vertical():

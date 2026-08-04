@@ -185,6 +185,7 @@ func _start_content_drag() -> void:
 
 ## Ends content dragging.
 func _end_content_drag() -> void:
+	_notify_scroll_end()
 	content_dragging = false
 	is_in_deadzone = false
 
@@ -198,7 +199,18 @@ func _process_drag_motion(event) -> void:
 	if _container.should_scroll_vertical():
 		drag_temp_data[1] += event.relative.y
 	
-	_remove_all_children_focus(_container)
+	if is_in_deadzone:
+		var deadzone: int = _container.scroll_deadzone
+		if abs(drag_temp_data[0]) <= deadzone and abs(drag_temp_data[1]) <= deadzone:
+			return
+		
+		is_in_deadzone = false
+		# Reset accumulation so scrolling starts from the current position
+		drag_temp_data[0] = 0.0
+		drag_temp_data[1] = 0.0
+		# Cancels pending input of child controls, e.g. a button press
+		_container.propagate_notification(Control.NOTIFICATION_SCROLL_BEGIN)
+	
 	_container.handle_content_dragging()
 
 
@@ -225,6 +237,7 @@ func _process_screen_touch(event: InputEventScreenTouch) -> void:
 		init_drag_temp_data()
 		_container.scrollbar_animator.kill_scroll_tweens()
 	else:
+		_notify_scroll_end()
 		content_dragging = false
 		is_in_deadzone = false
 
@@ -263,11 +276,8 @@ func _handle_scrollbar_touch(event: InputEventScreenTouch, vertical: bool) -> vo
 			h_scrollbar_dragging = false
 
 
-## Recursively removes focus from the specified [param node] and all its children.
-func _remove_all_children_focus(node: Node) -> void:
-	if node is Control:
-		var control := node as Control
-		control.release_focus()
-	
-	for child: Node in node.get_children():
-		_remove_all_children_focus(child)
+## Notifies child controls that scrolling ended. [br]
+## Only sent after the deadzone was left, so it always pairs with a scroll begin.
+func _notify_scroll_end() -> void:
+	if content_dragging and not is_in_deadzone:
+		_container.propagate_notification(Control.NOTIFICATION_SCROLL_END)
