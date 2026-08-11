@@ -48,6 +48,18 @@ enum SCROLL_TYPE {
 ## before interpolating back to its bounds
 @export var allow_overdragging: bool = true
 
+## Adds a soft clipping gradient at the start and end of the scrollable area.
+## The gradient is used as an alpha mask for the scrollable content.
+@export_enum("Disabled", "Vertical", "Horizontal") var clipping_gradient: int = 0:
+	set(value):
+		clipping_gradient = value
+		_update_clipping_gradient()
+## Width of each clipping gradient edge in pixels.
+@export_range(0.0, 500.0, 1.0, "or_greater") var clipping_gradient_size: float = 32.0:
+	set(value):
+		clipping_gradient_size = value
+		_update_clipping_gradient()
+
 @export_group("Scroll Bar")
 ## Hides scrollbar as long as not hovered or interacted with
 @export var hide_scrollbar_over_time: bool = false:
@@ -120,6 +132,10 @@ var _size_stable_frames := 0
 var _pending_ensure_control: Control = null
 ## Timer to check for size stability
 var _ensure_stability_timer: Timer = null
+## Material used to apply the alpha mask to content canvas items.
+var _clipping_gradient_material: ShaderMaterial
+## Original content materials restored when the mask is disabled.
+var _clipping_gradient_original_materials: Dictionary = {}
 #endregion
 
 #endregion
@@ -179,6 +195,8 @@ func _ready() -> void:
 			call_deferred("_apply_mouse_filters_to_children")
 	
 	# Default to idle state until needed
+	_setup_clipping_gradient()
+	resized.connect(_update_clipping_gradient)
 	set_process(false)
 
 
@@ -189,6 +207,7 @@ func _process(delta: float) -> void:
 
 	scroll(true, velocity.y, pos.y, delta)
 	scroll(false, velocity.x, pos.x, delta)
+	_update_clipping_gradient_edges()
 	update_scrollbars()
 	update_is_scrolling()
 
@@ -229,6 +248,101 @@ func _draw() -> void:
 	if debug_mode: ScrollDebugger.draw_debug(self)
 
 
+## Creates and updates the optional clipping gradient mask.
+func _setup_clipping_gradient() -> void:
+	if _clipping_gradient_material:
+		_update_clipping_gradient()
+		return
+
+	_clipping_gradient_material = ShaderMaterial.new()
+	_clipping_gradient_material.shader = preload("clipping_gradient.gdshader")
+	_update_clipping_gradient()
+
+
+func _update_clipping_gradient() -> void:
+	if not _clipping_gradient_material: return
+
+	var enabled := clipping_gradient != 0 and clipping_gradient_size > 0.0
+	if enabled:
+		_apply_clipping_gradient_materials()
+	else:
+		_restore_clipping_gradient_materials()
+
+	_clipping_gradient_material.set_shader_parameter("direction", int(clipping_gradient == 2))
+	_clipping_gradient_material.set_shader_parameter("fade_size", clipping_gradient_size)
+	_update_clipping_gradient_edges()
+	_update_clipping_gradient_rect()
+	queue_redraw()
+
+
+func _apply_clipping_gradient_materials() -> void:
+	if not content_node: return
+	for node in _get_content_canvas_items(content_node):
+		if not _clipping_gradient_original_materials.has(node):
+			_clipping_gradient_original_materials[node] = node.material
+		node.material = _clipping_gradient_material
+
+
+func _restore_clipping_gradient_materials() -> void:
+	for node: CanvasItem in _clipping_gradient_original_materials:
+		if is_instance_valid(node):
+			node.material = _clipping_gradient_original_materials[node]
+	_clipping_gradient_original_materials.clear()
+
+
+## Enables each fade edge only while content remains on that side of the viewport.
+func _update_clipping_gradient_edges() -> void:
+	if not _clipping_gradient_material: return
+
+	var edge_mask := Vector2.ZERO
+	if clipping_gradient != 0 and clipping_gradient_size > 0.0 and content_node:
+		if clipping_gradient == 1:
+			var size_diff_y := ScrollLayout.get_child_size_y_diff(
+				content_node, ScrollLayout.get_spare_size_y(self, content_margins), true
+			)
+			edge_mask = Vector2(
+				float(pos.y < -0.001),
+				float(pos.y > -size_diff_y + 0.001)
+			)
+		else:
+			var size_diff_x := ScrollLayout.get_child_size_x_diff(
+				content_node, ScrollLayout.get_spare_size_x(self, content_margins), true
+			)
+			edge_mask = Vector2(
+				float(pos.x < -0.001),
+				float(pos.x > -size_diff_x + 0.001)
+			)
+
+	_clipping_gradient_material.set_shader_parameter("edge_mask", edge_mask)
+
+
+func _get_content_canvas_items(node: Node) -> Array[CanvasItem]:
+	var result: Array[CanvasItem] = []
+	if node is CanvasItem:
+		result.append(node)
+	for child in node.get_children():
+		result.append_array(_get_content_canvas_items(child))
+	return result
+
+
+func _update_clipping_gradient_rect() -> void:
+	if not _clipping_gradient_material: return
+	var viewport_size := get_viewport_rect().size
+	var canvas_transform := get_global_transform_with_canvas()
+	var top_left := canvas_transform * Vector2.ZERO
+	var bottom_right := canvas_transform * size
+	_clipping_gradient_material.set_shader_parameter(
+		"mask_rect",
+		Vector4(
+			top_left.x / max(1.0, viewport_size.x),
+			top_left.y / max(1.0, viewport_size.y),
+			bottom_right.x / max(1.0, viewport_size.x),
+			bottom_right.y / max(1.0, viewport_size.y)
+		)
+	)
+	_clipping_gradient_material.set_shader_parameter("viewport_size", viewport_size)
+
+
 ## Sets default mouse filter for SmoothScroll children to [constant Control.MOUSE_FILTER_PASS]. [br]
 ## Called when a [param node] is added to the tree.
 func _on_node_added(node: Node) -> void:
@@ -237,6 +351,8 @@ func _on_node_added(node: Node) -> void:
 			if not node.has_meta("_smooth_scroll_default_mouse_filter_set"):
 				node.mouse_filter = Control.MOUSE_FILTER_PASS
 				node.set_meta("_smooth_scroll_default_mouse_filter_set", true)
+		if clipping_gradient != 0 and clipping_gradient_size > 0.0:
+			_apply_clipping_gradient_materials()
 
 
 ## Called when the scrollbar hide timer times out. Hides scrollbars when neither scrollbar is being dragged.
