@@ -22,6 +22,8 @@ var content_dragging: bool = false
 var content_dragging_moved: bool = false
 ## Whether touch point is in deadzone
 var is_in_deadzone: bool = false
+## Whether the drag comes from a touch point
+var is_touch_dragging: bool = false
 ## When true, horizontal scrollbar is being dragged
 var h_scrollbar_dragging: bool = false
 ## When true, vertical scrollbar is being dragged
@@ -51,7 +53,7 @@ func process_gui_input(event: InputEvent) -> void:
 	
 	# Drag motion events
 	if (event is InputEventScreenDrag and drag_with_touch) \
-			or (event is InputEventMouseMotion and drag_with_mouse):
+			or (event is InputEventMouseMotion and drag_with_mouse and not is_touch_dragging):
 		_process_drag_motion(event)
 	
 	# Pan gesture events
@@ -231,6 +233,7 @@ func _process_screen_touch(event: InputEventScreenTouch) -> void:
 			return
 		
 		content_dragging = true
+		is_touch_dragging = true
 		is_in_deadzone = true
 		_container.scroll_damper = _container.dragging_scroll_damper
 		_container.last_scroll_type = SmoothScrollContainer.SCROLL_TYPE.DRAG
@@ -239,6 +242,7 @@ func _process_screen_touch(event: InputEventScreenTouch) -> void:
 	else:
 		_notify_scroll_end()
 		content_dragging = false
+		is_touch_dragging = false
 		is_in_deadzone = false
 
 
